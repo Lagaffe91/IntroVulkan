@@ -1,18 +1,24 @@
+#include "Window.h"
+
 #include <GLFW/glfw3.h>
+
+#include <iostream>
+
+#define APP_NAME "API Graphiques modernes : vulkan"
+#define WINDOW_WIDTH 720
+#define WINDOW_HEIGHT 480
 
 int main()
 {
     glfwInit();
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); //for vulkan stuff
 
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    Window* window = Window::Create(APP_NAME, WINDOW_WIDTH, WINDOW_HEIGHT);
 
-	GLFWwindow* window = glfwCreateWindow(720,480, "API Graphiques modernes vulkan", nullptr, nullptr);
+    int _;
+    std::cin >> _;
 
-    while (!glfwWindowShouldClose(window)) {
-        glfwPollEvents();
-    }
-
-    glfwDestroyWindow(window);
+    window->Destroy();
 
     glfwTerminate();
 
