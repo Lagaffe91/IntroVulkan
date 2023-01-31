@@ -6,7 +6,6 @@
 
 class Window
 {
-public :
 	Window(GLFWwindow* window);
 	~Window();
 
