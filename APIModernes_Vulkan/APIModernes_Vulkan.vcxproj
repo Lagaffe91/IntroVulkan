@@ -165,6 +165,13 @@
   <ItemGroup>
     <ClInclude Include="include\GLFW\glfw3.h" />
     <ClInclude Include="include\GLFW\glfw3native.h" />
+    <ClInclude Include="include\vk_video\vulkan_video_codecs_common.h" />
+    <ClInclude Include="include\vk_video\vulkan_video_codec_h264std.h" />
+    <ClInclude Include="include\vk_video\vulkan_video_codec_h264std_decode.h" />
+    <ClInclude Include="include\vk_video\vulkan_video_codec_h264std_encode.h" />
+    <ClInclude Include="include\vk_video\vulkan_video_codec_h265std.h" />
+    <ClInclude Include="include\vk_video\vulkan_video_codec_h265std_decode.h" />
+    <ClInclude Include="include\vk_video\vulkan_video_codec_h265std_encode.h" />
     <ClInclude Include="include\vulkan\vk_enum_string_helper.h" />
     <ClInclude Include="include\vulkan\vk_icd.h" />
     <ClInclude Include="include\vulkan\vk_layer.h" />

@@ -19,6 +19,9 @@
     <Filter Include="Fichiers d%27en-tête\vulkan">
       <UniqueIdentifier>{f7c9f382-f33c-435a-a81f-4f5ecf235baf}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Fichiers d%27en-tête\vk_video">
+      <UniqueIdentifier>{5923e8b6-870b-4bfc-8217-c043b1772433}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\GLFW\glfw3.h">
@@ -143,6 +146,27 @@
     </ClInclude>
     <ClInclude Include="src\IRenderer.h">
       <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
+    <ClInclude Include="include\vk_video\vulkan_video_codec_h264std.h">
+      <Filter>Fichiers d%27en-tête\vk_video</Filter>
+    </ClInclude>
+    <ClInclude Include="include\vk_video\vulkan_video_codec_h264std_decode.h">
+      <Filter>Fichiers d%27en-tête\vk_video</Filter>
+    </ClInclude>
+    <ClInclude Include="include\vk_video\vulkan_video_codec_h264std_encode.h">
+      <Filter>Fichiers d%27en-tête\vk_video</Filter>
+    </ClInclude>
+    <ClInclude Include="include\vk_video\vulkan_video_codec_h265std.h">
+      <Filter>Fichiers d%27en-tête\vk_video</Filter>
+    </ClInclude>
+    <ClInclude Include="include\vk_video\vulkan_video_codec_h265std_decode.h">
+      <Filter>Fichiers d%27en-tête\vk_video</Filter>
+    </ClInclude>
+    <ClInclude Include="include\vk_video\vulkan_video_codec_h265std_encode.h">
+      <Filter>Fichiers d%27en-tête\vk_video</Filter>
+    </ClInclude>
+    <ClInclude Include="include\vk_video\vulkan_video_codecs_common.h">
+      <Filter>Fichiers d%27en-tête\vk_video</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

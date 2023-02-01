@@ -2,21 +2,52 @@
 
 #include <iostream>
 
+Application* Application::mInstance = nullptr;
+
 bool Application::Init(const std::string& p_windowName, const int& p_width, const int& p_height)
 {
-	if (mRenderer)
-		delete mRenderer;
-
-	if (mWindow)
-		delete mWindow;
-
-	if (mEngine)
-		delete mEngine;
+	//
+	//(I'd like to move this to IRenderer !)
+	//
 
 	glfwInit();
-	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); //prepare for vulkan (idealy put this in a renderer class)
-	
-	return false;
+	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); //For vulkan 
+
+	//Here ?
+	this->mRenderer = new VKRenderer();
+	this->mWindow = Window::Create(p_windowName, p_width, p_height);
+	this->mEngine = new Engine();
+
+	return (this->mRenderer || this->mWindow || this->mEngine);
+}
+
+void Application::Release()
+{
+	//TODO : Free renderer ressources
+	if (mRenderer);
+
+	if (mWindow)
+		mWindow->Destroy();
+
+	if (mEngine)
+		mEngine->Destroy();
+}
+
+void Application::Create()
+{
+	if (!Application::mInstance)
+		Application::mInstance = new Application();
+}
+
+void Application::Destroy()
+{
+	if (Application::mInstance)
+		delete Application::mInstance;
+}
+
+Application& Application::Get()
+{
+	return *mInstance;
 }
 
 int Application::Run(const std::string& p_windowName, const int& p_width, const int& p_height)
@@ -25,10 +56,20 @@ int Application::Run(const std::string& p_windowName, const int& p_width, const 
 
 	if (!init)
 		return 1;
+	
+	while (!mWindow->ShouldClose()) 
+	{
+		glfwPollEvents();
+	}
 
-	//TODO : main loop here
-	int _;
-	std::cin >> _;
+	this->Quit();
 
 	return 0;
+}
+
+void Application::Quit()
+{
+	this->Release();
+
+	glfwTerminate();
 }

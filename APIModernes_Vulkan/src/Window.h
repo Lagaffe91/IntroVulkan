@@ -22,6 +22,9 @@ private:
 
 public :
 	static Window* Create(const std::string& p_windowName, const int& p_width, const int& p_height);
+	
 	void Destroy();
+
+	bool ShouldClose();
 };
 

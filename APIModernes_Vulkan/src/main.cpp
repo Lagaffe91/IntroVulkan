@@ -10,5 +10,9 @@ int main()
 
 	Application app = Application::Get();
 
-	return app.Run(APP_NAME, WINDOW_WIDTH, WINDOW_HEIGHT);
+	int result = app.Run(APP_NAME, WINDOW_WIDTH, WINDOW_HEIGHT);
+
+	app.Destroy();
+
+	return result;
 }

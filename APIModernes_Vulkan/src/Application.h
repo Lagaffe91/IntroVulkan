@@ -14,7 +14,7 @@ private :
 	Window* mWindow = nullptr;
 	Engine* mEngine = nullptr;
 
-	VKRenderer* mRenderer = nullptr;
+	IRenderer* mRenderer = nullptr;
 
 private:
 	bool Init(const std::string& p_windowName, const int& p_width, const int& p_height);
@@ -28,6 +28,5 @@ public :
 	
 	int Run(const std::string& p_windowName, const int& p_width, const int& p_height);
 	void Quit();
-
 };
 

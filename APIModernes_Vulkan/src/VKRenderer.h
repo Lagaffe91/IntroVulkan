@@ -1,5 +1,9 @@
 #pragma once
-class VKRenderer : IRenderer
-{
-};
 
+#include "IRenderer.h"
+
+class VKRenderer : public IRenderer
+{
+public:
+	bool Init() override;
+};

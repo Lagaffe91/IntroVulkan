@@ -28,3 +28,8 @@ void Window::Destroy()
 	
 	delete this;
 }
+
+bool Window::ShouldClose()
+{
+	return glfwWindowShouldClose(mWindow);
+}
