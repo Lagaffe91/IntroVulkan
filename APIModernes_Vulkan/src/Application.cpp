@@ -7,7 +7,7 @@ Application* Application::mInstance = nullptr;
 bool Application::Init(const std::string& p_windowName, const int& p_width, const int& p_height)
 {
 	//
-	//(I'd like to move this to IRenderer !)
+	//(I'd like to move the glfw part to IRenderer or smth else !)
 	//
 
 	glfwInit();
@@ -23,8 +23,8 @@ bool Application::Init(const std::string& p_windowName, const int& p_width, cons
 
 void Application::Release()
 {
-	//TODO : Free renderer ressources
-	if (mRenderer);
+	if (mRenderer)
+		mRenderer->Release();
 
 	if (mWindow)
 		mWindow->Destroy();

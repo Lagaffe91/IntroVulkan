@@ -1,8 +1,6 @@
 #include "Application.h"
 
-#define APP_NAME "API Graphiques modernes : vulkan"
-#define WINDOW_WIDTH 720
-#define WINDOW_HEIGHT 480
+#include "Utils.h"
 
 int main()
 {

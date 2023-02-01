@@ -1,7 +1,8 @@
 #pragma once
 
-class IRenderer 
+class IRenderer
 {
 public:
-	virtual bool Init();
+	virtual bool Init() = 0;
+	virtual void Release() = 0;
 };
