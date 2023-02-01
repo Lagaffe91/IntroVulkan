@@ -3,13 +3,14 @@
 #include "GLFW/glfw3.h"
 
 #include "VKRenderer.h"
+
 bool VKRenderer::CreateVKInstance()
 {
 	//
 	// VkApplicationInfo initialisation
 	//
 
-	VkApplicationInfo applicationInfo;
+	VkApplicationInfo applicationInfo{};
 
 	applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 	applicationInfo.pApplicationName = APP_NAME;
@@ -22,7 +23,7 @@ bool VKRenderer::CreateVKInstance()
 	// VkApplicationInfo initialisation
 	//
 
-	VkInstanceCreateInfo instanceCreateInfo;
+	VkInstanceCreateInfo instanceCreateInfo{};
 
 	uint32_t glfwExtentionCount = 0;
 	const char** glfwExtentionsChr = glfwGetRequiredInstanceExtensions(&glfwExtentionCount);
@@ -30,9 +31,11 @@ bool VKRenderer::CreateVKInstance()
 	instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	instanceCreateInfo.pApplicationInfo = &applicationInfo;
 	instanceCreateInfo.enabledExtensionCount = glfwExtentionCount;
-	instanceCreateInfo.ppEnabledLayerNames = glfwExtentionsChr;
+	instanceCreateInfo.ppEnabledExtensionNames = glfwExtentionsChr;
 	instanceCreateInfo.enabledLayerCount = 0;
 
+
+	//Validation layers
 #ifdef _DEBUG
 	uint32_t layerCount = 0;
 	const std::vector<const char*> validationLayers = { "VK_LAYER_KHRONOS_validation" }; //More ?
@@ -48,38 +51,106 @@ bool VKRenderer::CreateVKInstance()
 	}
 #endif // _DEBUG
 
+	VkResult creationResult;
+	creationResult = vkCreateInstance(&instanceCreateInfo, nullptr, &this->mVKInstance);
 
-	VkResult creationResult = vkCreateInstance(&instanceCreateInfo, nullptr, &this->mVKInstance);
 	return creationResult == VK_SUCCESS;
 }
 
-bool VKRenderer::EnableValidationLayers(const std::vector<const char*>& validationLayers, uint32_t* layerCount)
+bool VKRenderer::EnableValidationLayers(const std::vector<const char*>& p_validationLayers, uint32_t* p_layerCount)
 {
-	vkEnumerateInstanceLayerProperties(layerCount, nullptr);
+	vkEnumerateInstanceLayerProperties(p_layerCount, nullptr);
 
-	std::vector<VkLayerProperties>layerProperties(*layerCount);
-	vkEnumerateInstanceLayerProperties(layerCount, layerProperties.data());
+	std::vector<VkLayerProperties>layerProperties(*p_layerCount);
+	vkEnumerateInstanceLayerProperties(p_layerCount, layerProperties.data());
 
 	//Check if all layers are supported
-	for (const char* layer : validationLayers)
+	for (const char* layer : p_validationLayers)
 	{
 		bool isFound = false;
-		for (VkLayerProperties layerProperty : layerProperties)
+		for (const VkLayerProperties &layerProperty : layerProperties)
 		{
+			isFound = strcmp(layerProperty.layerName, layer);
+			if (isFound)
+				break;
+		}
 
+		if (!isFound)
+			return false;
+	}
+
+	return true;
+}
+
+bool VKRenderer::PickPhysicalDevice()
+{
+	uint32_t deviceCount = 0;
+	vkEnumeratePhysicalDevices(this->mVKInstance, &deviceCount, nullptr);
+
+	if (deviceCount <= 0)
+		return false;
+
+	std::vector<VkPhysicalDevice> devices(deviceCount);
+	vkEnumeratePhysicalDevices(this->mVKInstance, &deviceCount, devices.data());
+
+	mPhysicalDevice = this->GetBestDevice(devices);
+
+	return true;
+}
+
+struct NeededQueues
+{
+	bool graphicalQueue = false;
+
+	bool isComplete()
+	{
+		return graphicalQueue;
+	}
+};
+
+//TODO: Better way to select gpu !
+VkPhysicalDevice VKRenderer::GetBestDevice(const std::vector<VkPhysicalDevice>& p_devices)
+{
+	for (const VkPhysicalDevice& device : p_devices)
+	{
+		VkPhysicalDeviceProperties deviceProperties;
+		VkPhysicalDeviceFeatures deviceFeatures;
+		vkGetPhysicalDeviceProperties(device, &deviceProperties);
+		vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+		
+		if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && deviceFeatures.geometryShader)
+		{
+			NeededQueues neededQueues;
+
+			uint32_t queueFamilyCount = 0;
+			vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+			std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+			vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+			if(queueFamilies[0].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+				neededQueues.graphicalQueue = true;
+
+			if (neededQueues.isComplete())
+			{
+				return device;
+			}
 		}
 	}
 
-	VkResult result = VK_SUCCESS;
-	return result == VK_SUCCESS;
+	return VkPhysicalDevice();
+}
 
-
+bool VKRenderer::CreateLogicalDevice()
+{
+	return false;
 }
 
 bool VKRenderer::Init()
 {
 	bool result = this->CreateVKInstance();
 	
+	result &= PickPhysicalDevice();
 	//result &= 
 
 	return result;
