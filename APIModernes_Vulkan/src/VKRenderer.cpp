@@ -40,7 +40,7 @@ bool VKRenderer::CreateVKInstance()
 	uint32_t layerCount = 0;
 	const std::vector<const char*> validationLayers = { "VK_LAYER_KHRONOS_validation" }; //More ?
 
-	if (this->EnableValidationLayers(validationLayers, &layerCount))
+	if (this->CanEnableValidationLayers(validationLayers, &layerCount))
 	{
 		instanceCreateInfo.enabledLayerCount = layerCount;
 		instanceCreateInfo.ppEnabledLayerNames = validationLayers.data();
@@ -51,13 +51,10 @@ bool VKRenderer::CreateVKInstance()
 	}
 #endif // _DEBUG
 
-	VkResult creationResult;
-	creationResult = vkCreateInstance(&instanceCreateInfo, nullptr, &this->mVKInstance);
-
-	return creationResult == VK_SUCCESS;
+	return vkCreateInstance(&instanceCreateInfo, nullptr, &this->mVKInstance) == VK_SUCCESS;
 }
 
-bool VKRenderer::EnableValidationLayers(const std::vector<const char*>& p_validationLayers, uint32_t* p_layerCount)
+bool VKRenderer::CanEnableValidationLayers(const std::vector<const char*>& p_validationLayers, uint32_t* p_layerCount)
 {
 	vkEnumerateInstanceLayerProperties(p_layerCount, nullptr);
 
@@ -87,7 +84,7 @@ bool VKRenderer::PickPhysicalDevice()
 	uint32_t deviceCount = 0;
 	vkEnumeratePhysicalDevices(this->mVKInstance, &deviceCount, nullptr);
 
-	if (deviceCount <= 0)
+	if (deviceCount == 0)
 		return false;
 
 	std::vector<VkPhysicalDevice> devices(deviceCount);
@@ -128,6 +125,7 @@ VkPhysicalDevice VKRenderer::GetBestDevice(const std::vector<VkPhysicalDevice>& 
 			std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
 			vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
 
+			//TODO : 0 ?
 			if(queueFamilies[0].queueFlags & VK_QUEUE_GRAPHICS_BIT)
 				neededQueues.graphicalQueue = true;
 
