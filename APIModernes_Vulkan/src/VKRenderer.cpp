@@ -98,11 +98,11 @@ bool VKRenderer::PickPhysicalDevice()
 
 struct NeededQueues
 {
-	bool graphicalQueue = false;
+	uint32_t graphicalQueue = UINT32_MAX;
 
 	bool isComplete()
 	{
-		return graphicalQueue;
+		return (graphicalQueue != UINT32_MAX);
 	}
 };
 
@@ -120,21 +120,24 @@ VkPhysicalDevice VKRenderer::GetBestDevice(const std::vector<VkPhysicalDevice>& 
 		{
 			NeededQueues neededQueues;
 
-			uint32_t queueFamilyCount = 0;
-			vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+			uint32_t queueCount = 0;
+			vkGetPhysicalDeviceQueueFamilyProperties(device, &queueCount, nullptr);
 
-			std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-			vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
-
+			std::vector<VkQueueFamilyProperties> queueFamilies(queueCount);
+			vkGetPhysicalDeviceQueueFamilyProperties(device, &queueCount, queueFamilies.data());
+			
+			uint32_t i = 0;
 			for(const VkQueueFamilyProperties &queues : queueFamilies)
 			{
 				if(queues.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-					neededQueues.graphicalQueue = true;
+					neededQueues.graphicalQueue = i;
 
 				if (neededQueues.isComplete())
 				{
 					return device;
 				}
+				
+				i++;
 			}
 		}
 	}
@@ -144,6 +147,11 @@ VkPhysicalDevice VKRenderer::GetBestDevice(const std::vector<VkPhysicalDevice>& 
 
 bool VKRenderer::CreateLogicalDevice()
 {
+	VkDeviceCreateInfo deviceCreateInfo{};
+
+	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+
+	vkCreateDevice(this->mPhysicalDevice, &deviceCreateInfo, nullptr, &this->mLogicalDevice);
 	return false;
 }
 
@@ -160,4 +168,5 @@ bool VKRenderer::Init()
 void VKRenderer::Release()
 {
 	vkDestroyInstance(this->mVKInstance, nullptr);
+	vkDestroyDevice(this->mLogicalDevice, nullptr);
 }
