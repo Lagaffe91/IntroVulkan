@@ -175,21 +175,21 @@ bool VKRenderer::CreateLogicalDevice()
 	return vkCreateDevice(this->mPhysicalDevice.physicalDevice, &deviceCreateInfo, nullptr, &this->mLogicalDevice) == VK_SUCCESS;
 }
 
-bool VKRenderer::Init()
+bool VKRenderer::Init(const Window* p_window)
 {
 	bool result = this->CreateVKInstance();
 	
 	result &= PickPhysicalDevice();
 	result &= CreateLogicalDevice();
-	//result &=
-
+	result &= glfwCreateWindowSurface(this->mVKInstance, p_window->mWindow , nullptr, &this->mRenderingSurface) == VK_SUCCESS;
+	
 	return result;
 }
 
 void VKRenderer::Release()
 {
 	vkDestroyDevice(this->mLogicalDevice, nullptr);
-
+	vkDestroySurfaceKHR(this->mVKInstance, this->mRenderingSurface, nullptr);
 
 	//Destory the instance at the very end !
 	vkDestroyInstance(this->mVKInstance, nullptr);

@@ -18,7 +18,7 @@ bool Application::Init(const std::string& p_windowName, const int& p_width, cons
 	this->mWindow = Window::Create(p_windowName, p_width, p_height);
 	this->mEngine = new Engine();
 
-	this->mRenderer->Init();
+	this->mRenderer->Init(this->mWindow);
 
 	return (this->mRenderer || this->mWindow || this->mEngine);
 }

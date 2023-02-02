@@ -16,6 +16,7 @@ private :
 
 	VkInstance			mVKInstance;
 	VkDevice			mLogicalDevice;
+	VkSurfaceKHR		mRenderingSurface;
 
 	PhysicalDeviceDescription mPhysicalDevice;
 
@@ -33,6 +34,6 @@ private :
 //
 
 public:
-	bool Init() override;
+	bool Init(const Window* p_window) override;
 	void Release() override;
 };
