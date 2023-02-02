@@ -96,6 +96,7 @@ bool VKRenderer::PickPhysicalDevice()
 }
 
 //TODO: Better way to select gpu !
+//TODO: Refactor VKRenderer::GetBestDevice
 PhysicalDeviceDescription VKRenderer::GetBestDevice(const std::vector<VkPhysicalDevice>& p_devices)
 {
 	PhysicalDeviceDescription result;
@@ -127,7 +128,13 @@ PhysicalDeviceDescription VKRenderer::GetBestDevice(const std::vector<VkPhysical
 			for(const VkQueueFamilyProperties &queues : queueFamilies)
 			{
 				if(queues.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-					supportedQueues.graphicalQueue = i;
+					supportedQueues.graphicsFamily = i;
+		
+				VkBool32 presentSupport = false;
+				vkGetPhysicalDeviceSurfaceSupportKHR(device, i, this->mRenderingSurface, &presentSupport);
+		
+				if (presentSupport)
+					supportedQueues.presentFamily = i;
 
 				if (supportedQueues.isComplete())
 				{
@@ -150,12 +157,13 @@ PhysicalDeviceDescription VKRenderer::GetBestDevice(const std::vector<VkPhysical
 
 bool VKRenderer::CreateLogicalDevice()
 {
+	//TODO : Vector of VkDeviceQueueCreateInfo for multiple queues
 	VkDeviceQueueCreateInfo deviceQueueCreateInfo{};
 
 	constexpr float queuePriorities = 1.0f;
 
 	deviceQueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	deviceQueueCreateInfo.queueFamilyIndex = this->mPhysicalDevice.supportedQueues.graphicalQueue;
+	deviceQueueCreateInfo.queueFamilyIndex = this->mPhysicalDevice.supportedQueues.graphicsFamily;
 	deviceQueueCreateInfo.queueCount = 1;
 	deviceQueueCreateInfo.pQueuePriorities = &queuePriorities;
 
@@ -179,9 +187,9 @@ bool VKRenderer::Init(const Window* p_window)
 {
 	bool result = this->CreateVKInstance();
 	
+	result &= glfwCreateWindowSurface(this->mVKInstance, p_window->mWindow , nullptr, &this->mRenderingSurface) == VK_SUCCESS;
 	result &= PickPhysicalDevice();
 	result &= CreateLogicalDevice();
-	result &= glfwCreateWindowSurface(this->mVKInstance, p_window->mWindow , nullptr, &this->mRenderingSurface) == VK_SUCCESS;
 	
 	return result;
 }

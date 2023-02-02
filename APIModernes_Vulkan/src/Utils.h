@@ -25,11 +25,12 @@
 #pragma region Utils Vulkan Renderer
 struct DeviceSupportedQueues
 {
-	uint32_t graphicalQueue = UINT32_MAX;
-
+	uint32_t graphicsFamily = UINT32_MAX;
+	uint32_t presentFamily	= UINT32_MAX;
+	
 	bool isComplete()
 	{
-		return (graphicalQueue != UINT32_MAX);
+		return (graphicsFamily != UINT32_MAX) && (presentFamily != UINT32_MAX);
 	}
 };
 
