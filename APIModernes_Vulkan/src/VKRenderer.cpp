@@ -126,13 +126,15 @@ VkPhysicalDevice VKRenderer::GetBestDevice(const std::vector<VkPhysicalDevice>& 
 			std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
 			vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
 
-			//TODO : 0 ?
-			if(queueFamilies[0].queueFlags & VK_QUEUE_GRAPHICS_BIT)
-				neededQueues.graphicalQueue = true;
-
-			if (neededQueues.isComplete())
+			for(const VkQueueFamilyProperties &queues : queueFamilies)
 			{
-				return device;
+				if(queues.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+					neededQueues.graphicalQueue = true;
+
+				if (neededQueues.isComplete())
+				{
+					return device;
+				}
 			}
 		}
 	}
