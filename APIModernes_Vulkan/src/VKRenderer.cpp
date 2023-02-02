@@ -37,12 +37,12 @@ bool VKRenderer::CreateVKInstance()
 
 	//Validation layers
 #ifdef _DEBUG
-	uint32_t layerCount = 0;
+	
 	const std::vector<const char*> validationLayers = { "VK_LAYER_KHRONOS_validation" }; //More ?
 
-	if (this->CanEnableValidationLayers(validationLayers, &layerCount))
+	if (this->CanEnableValidationLayers(validationLayers))
 	{
-		instanceCreateInfo.enabledLayerCount = layerCount;
+		instanceCreateInfo.enabledLayerCount = validationLayers.size();
 		instanceCreateInfo.ppEnabledLayerNames = validationLayers.data();
 	}
 	else
@@ -54,12 +54,13 @@ bool VKRenderer::CreateVKInstance()
 	return vkCreateInstance(&instanceCreateInfo, nullptr, &this->mVKInstance) == VK_SUCCESS;
 }
 
-bool VKRenderer::CanEnableValidationLayers(const std::vector<const char*>& p_validationLayers, uint32_t* p_layerCount)
+bool VKRenderer::CanEnableValidationLayers(const std::vector<const char*>& p_validationLayers)
 {
-	vkEnumerateInstanceLayerProperties(p_layerCount, nullptr);
+	uint32_t layerCount = 0;
+	vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 
-	std::vector<VkLayerProperties>layerProperties(*p_layerCount);
-	vkEnumerateInstanceLayerProperties(p_layerCount, layerProperties.data());
+	std::vector<VkLayerProperties>layerProperties(layerCount);
+	vkEnumerateInstanceLayerProperties(&layerCount, layerProperties.data());
 
 	//Check if all layers are supported
 	for (const char* layer : p_validationLayers)
