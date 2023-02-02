@@ -42,7 +42,7 @@ bool VKRenderer::CreateVKInstance()
 
 	if (this->CanEnableValidationLayers(validationLayers))
 	{
-		instanceCreateInfo.enabledLayerCount = validationLayers.size();
+		instanceCreateInfo.enabledLayerCount = (uint32_t)validationLayers.size(); //Conversion :/
 		instanceCreateInfo.ppEnabledLayerNames = validationLayers.data();
 	}
 	else
@@ -91,24 +91,16 @@ bool VKRenderer::PickPhysicalDevice()
 	std::vector<VkPhysicalDevice> devices(deviceCount);
 	vkEnumeratePhysicalDevices(this->mVKInstance, &deviceCount, devices.data());
 
-	mPhysicalDevice = this->GetBestDevice(devices);
+	this->mPhysicalDevice = this->GetBestDevice(devices);
 
 	return true;
 }
 
-struct NeededQueues
-{
-	uint32_t graphicalQueue = UINT32_MAX;
-
-	bool isComplete()
-	{
-		return (graphicalQueue != UINT32_MAX);
-	}
-};
-
 //TODO: Better way to select gpu !
-VkPhysicalDevice VKRenderer::GetBestDevice(const std::vector<VkPhysicalDevice>& p_devices)
+PhysicalDeviceDescription VKRenderer::GetBestDevice(const std::vector<VkPhysicalDevice>& p_devices)
 {
+	PhysicalDeviceDescription result;
+
 	for (const VkPhysicalDevice& device : p_devices)
 	{
 		VkPhysicalDeviceProperties deviceProperties;
@@ -118,7 +110,7 @@ VkPhysicalDevice VKRenderer::GetBestDevice(const std::vector<VkPhysicalDevice>& 
 		
 		if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && deviceFeatures.geometryShader)
 		{
-			NeededQueues neededQueues;
+			DeviceSupportedQueues supportedQueues;
 
 			uint32_t queueCount = 0;
 			vkGetPhysicalDeviceQueueFamilyProperties(device, &queueCount, nullptr);
@@ -130,11 +122,13 @@ VkPhysicalDevice VKRenderer::GetBestDevice(const std::vector<VkPhysicalDevice>& 
 			for(const VkQueueFamilyProperties &queues : queueFamilies)
 			{
 				if(queues.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-					neededQueues.graphicalQueue = i;
+					supportedQueues.graphicalQueue = i;
 
-				if (neededQueues.isComplete())
+				if (supportedQueues.isComplete())
 				{
-					return device;
+					result.physicalDevice = device;
+					result.supportedQueues = supportedQueues;
+					break;
 				}
 				
 				i++;
@@ -142,7 +136,8 @@ VkPhysicalDevice VKRenderer::GetBestDevice(const std::vector<VkPhysicalDevice>& 
 		}
 	}
 
-	return VkPhysicalDevice();
+	//TODO : Should crash the program here (no suiatable gpu)
+	return result;
 }
 
 bool VKRenderer::CreateLogicalDevice()
@@ -151,8 +146,7 @@ bool VKRenderer::CreateLogicalDevice()
 
 	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 
-	vkCreateDevice(this->mPhysicalDevice, &deviceCreateInfo, nullptr, &this->mLogicalDevice);
-	return false;
+	return vkCreateDevice(this->mPhysicalDevice.physicalDevice, &deviceCreateInfo, nullptr, &this->mLogicalDevice) == VK_SUCCESS;
 }
 
 bool VKRenderer::Init()

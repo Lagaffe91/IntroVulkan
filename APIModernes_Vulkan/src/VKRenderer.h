@@ -4,21 +4,24 @@
 
 #include <vector>
 
+#include "Utils.h"
+
 #include "IRenderer.h"
 
 class VKRenderer : public IRenderer
 {
 private :
 	VkInstance			mVKInstance;
-	VkPhysicalDevice	mPhysicalDevice;
 	VkDevice			mLogicalDevice;
+
+	PhysicalDeviceDescription mPhysicalDevice;
 
 private :
 	bool CreateVKInstance();
 	bool CanEnableValidationLayers(const std::vector<const char*>& p_validationLayers);
 	bool PickPhysicalDevice();
 
-	VkPhysicalDevice GetBestDevice(const std::vector<VkPhysicalDevice>& p_devices);
+	PhysicalDeviceDescription GetBestDevice(const std::vector<VkPhysicalDevice>& p_devices);
 
 	bool CreateLogicalDevice();
 

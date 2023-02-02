@@ -1,5 +1,11 @@
 #pragma once
 
+#include <cstdint>
+
+#include "vulkan/vulkan.h"
+
+#pragma region App Parameters
+
 #define APP_NAME	"API Graphiques modernes : vulkan"
 #define WINDOW_WIDTH	720
 #define WINDOW_HEIGHT	480
@@ -13,3 +19,23 @@
 #define ENGINE_VERSION_MAJOR	1
 #define ENGINE_VERSION_MINOR	0
 #define ENGINE_VERSION_PATCH	0	
+
+#pragma endregion App Parameters
+
+#pragma region Utils Vulkan Renderer
+struct DeviceSupportedQueues
+{
+	uint32_t graphicalQueue = UINT32_MAX;
+
+	bool isComplete()
+	{
+		return (graphicalQueue != UINT32_MAX);
+	}
+};
+
+struct PhysicalDeviceDescription
+{
+	VkPhysicalDevice		physicalDevice;
+	DeviceSupportedQueues	supportedQueues;
+};
+#pragma endregion Vulkan Renderer
