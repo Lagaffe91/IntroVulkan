@@ -11,6 +11,9 @@
 class VKRenderer : public IRenderer
 {
 private :
+	
+	const std::vector<const char*> mValidationLayers = { "VK_LAYER_KHRONOS_validation" }; //More ?
+
 	VkInstance			mVKInstance;
 	VkDevice			mLogicalDevice;
 

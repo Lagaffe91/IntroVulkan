@@ -35,7 +35,9 @@ struct DeviceSupportedQueues
 
 struct PhysicalDeviceDescription
 {
-	VkPhysicalDevice		physicalDevice;
-	DeviceSupportedQueues	supportedQueues;
+	VkPhysicalDevice			physicalDevice;
+	VkPhysicalDeviceFeatures	deviceFeatures;
+
+	DeviceSupportedQueues		supportedQueues;
 };
 #pragma endregion Vulkan Renderer

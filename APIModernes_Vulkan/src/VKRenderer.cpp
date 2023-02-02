@@ -34,16 +34,15 @@ bool VKRenderer::CreateVKInstance()
 	instanceCreateInfo.ppEnabledExtensionNames = glfwExtentionsChr;
 	instanceCreateInfo.enabledLayerCount = 0;
 
-
+	//
 	//Validation layers
-#ifdef _DEBUG
-	
-	const std::vector<const char*> validationLayers = { "VK_LAYER_KHRONOS_validation" }; //More ?
+	//
 
-	if (this->CanEnableValidationLayers(validationLayers))
+#ifdef _DEBUG
+	if (this->CanEnableValidationLayers(this->mValidationLayers))
 	{
-		instanceCreateInfo.enabledLayerCount = (uint32_t)validationLayers.size(); //Conversion :/
-		instanceCreateInfo.ppEnabledLayerNames = validationLayers.data();
+		instanceCreateInfo.enabledLayerCount = (uint32_t)this->mValidationLayers.size();	//Conversion :/
+		instanceCreateInfo.ppEnabledLayerNames = this->mValidationLayers.data();
 	}
 	else
 	{
@@ -101,11 +100,17 @@ PhysicalDeviceDescription VKRenderer::GetBestDevice(const std::vector<VkPhysical
 {
 	PhysicalDeviceDescription result;
 
+	bool deviceFound = false;
+
 	for (const VkPhysicalDevice& device : p_devices)
 	{
+		if (deviceFound)
+			break;
+
 		VkPhysicalDeviceProperties deviceProperties;
-		VkPhysicalDeviceFeatures deviceFeatures;
 		vkGetPhysicalDeviceProperties(device, &deviceProperties);
+		
+		VkPhysicalDeviceFeatures deviceFeatures;
 		vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
 		
 		if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && deviceFeatures.geometryShader)
@@ -126,8 +131,11 @@ PhysicalDeviceDescription VKRenderer::GetBestDevice(const std::vector<VkPhysical
 
 				if (supportedQueues.isComplete())
 				{
-					result.physicalDevice = device;
-					result.supportedQueues = supportedQueues;
+					deviceFound = true;
+
+					result.physicalDevice	= device;
+					result.supportedQueues	= supportedQueues;
+					result.deviceFeatures	= deviceFeatures;
 					break;
 				}
 				
@@ -142,9 +150,27 @@ PhysicalDeviceDescription VKRenderer::GetBestDevice(const std::vector<VkPhysical
 
 bool VKRenderer::CreateLogicalDevice()
 {
+	VkDeviceQueueCreateInfo deviceQueueCreateInfo{};
+
+	constexpr float queuePriorities = 1.0f;
+
+	deviceQueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	deviceQueueCreateInfo.queueFamilyIndex = this->mPhysicalDevice.supportedQueues.graphicalQueue;
+	deviceQueueCreateInfo.queueCount = 1;
+	deviceQueueCreateInfo.pQueuePriorities = &queuePriorities;
+
 	VkDeviceCreateInfo deviceCreateInfo{};
 
 	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	deviceCreateInfo.pEnabledFeatures = &this->mPhysicalDevice.deviceFeatures;
+	deviceCreateInfo.pQueueCreateInfos = &deviceQueueCreateInfo;
+	deviceCreateInfo.queueCreateInfoCount = 1;
+	deviceCreateInfo.enabledLayerCount = 0;
+
+#ifdef _DEBUG
+	deviceCreateInfo.enabledLayerCount = (uint32_t)this->mValidationLayers.size();
+	deviceCreateInfo.ppEnabledLayerNames = this->mValidationLayers.data();
+#endif // _DEBUG
 
 	return vkCreateDevice(this->mPhysicalDevice.physicalDevice, &deviceCreateInfo, nullptr, &this->mLogicalDevice) == VK_SUCCESS;
 }
@@ -154,13 +180,17 @@ bool VKRenderer::Init()
 	bool result = this->CreateVKInstance();
 	
 	result &= PickPhysicalDevice();
-	//result &= 
+	result &= CreateLogicalDevice();
+	//result &=
 
 	return result;
 }
 
 void VKRenderer::Release()
 {
-	vkDestroyInstance(this->mVKInstance, nullptr);
 	vkDestroyDevice(this->mLogicalDevice, nullptr);
+
+
+	//Destory the instance at the very end !
+	vkDestroyInstance(this->mVKInstance, nullptr);
 }
