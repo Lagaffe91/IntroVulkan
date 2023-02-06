@@ -17,6 +17,7 @@ private :
 	VkInstance			mVKInstance;
 	VkDevice			mLogicalDevice;
 	VkSurfaceKHR		mRenderingSurface;
+	VkQueue				mPresentQueue;
 
 	PhysicalDeviceDescription mPhysicalDevice;
 

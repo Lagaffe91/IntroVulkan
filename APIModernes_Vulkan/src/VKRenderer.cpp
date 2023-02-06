@@ -1,4 +1,4 @@
-#include "Utils.h"
+	#include "Utils.h"
 
 #include "GLFW/glfw3.h"
 
@@ -95,8 +95,9 @@ bool VKRenderer::PickPhysicalDevice()
 	return true;
 }
 
-//TODO: Better way to select gpu !
+//TODO: Better way to select gpu ! VKRenderer::GetBestDevice
 //TODO: Refactor VKRenderer::GetBestDevice
+//TODO : VKRenderer::GetBestDevice Crash the program if no suiatable gpu
 PhysicalDeviceDescription VKRenderer::GetBestDevice(const std::vector<VkPhysicalDevice>& p_devices)
 {
 	PhysicalDeviceDescription result;
@@ -132,7 +133,7 @@ PhysicalDeviceDescription VKRenderer::GetBestDevice(const std::vector<VkPhysical
 		
 				VkBool32 presentSupport = false;
 				vkGetPhysicalDeviceSurfaceSupportKHR(device, i, this->mRenderingSurface, &presentSupport);
-		
+
 				if (presentSupport)
 					supportedQueues.presentFamily = i;
 
@@ -151,32 +152,42 @@ PhysicalDeviceDescription VKRenderer::GetBestDevice(const std::vector<VkPhysical
 		}
 	}
 
-	//TODO : Should crash the program here (no suiatable gpu)
 	return result;
 }
 
 bool VKRenderer::CreateLogicalDevice()
 {
-	//TODO : Vector of VkDeviceQueueCreateInfo for multiple queues
-	VkDeviceQueueCreateInfo deviceQueueCreateInfo{};
+	std::vector<VkDeviceQueueCreateInfo> deviceQueueCreateInfos;
+	
+	std::vector<int32_t> queuesIdx;
+	
+	queuesIdx.push_back(this->mPhysicalDevice.supportedQueues.presentFamily);
+	queuesIdx.push_back(this->mPhysicalDevice.supportedQueues.graphicsFamily);
+	
+	const float queuePriorities = 1.0f;
 
-	constexpr float queuePriorities = 1.0f;
+	for(int32_t queue : queuesIdx)
+	{ 
+		VkDeviceQueueCreateInfo deviceQueueCreateInfo{};
 
-	deviceQueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	deviceQueueCreateInfo.queueFamilyIndex = this->mPhysicalDevice.supportedQueues.graphicsFamily;
-	deviceQueueCreateInfo.queueCount = 1;
-	deviceQueueCreateInfo.pQueuePriorities = &queuePriorities;
+		deviceQueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		deviceQueueCreateInfo.queueFamilyIndex = queue;
+		deviceQueueCreateInfo.queueCount = 1;
+		deviceQueueCreateInfo.pQueuePriorities = &queuePriorities;
+
+		deviceQueueCreateInfos.push_back(deviceQueueCreateInfo);
+	}
 
 	VkDeviceCreateInfo deviceCreateInfo{};
 
-	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-	deviceCreateInfo.pEnabledFeatures = &this->mPhysicalDevice.deviceFeatures;
-	deviceCreateInfo.pQueueCreateInfos = &deviceQueueCreateInfo;
-	deviceCreateInfo.queueCreateInfoCount = 1;
-	deviceCreateInfo.enabledLayerCount = 0;
+	deviceCreateInfo.sType					= VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	deviceCreateInfo.pEnabledFeatures		= &this->mPhysicalDevice.deviceFeatures;
+	deviceCreateInfo.pQueueCreateInfos		= deviceQueueCreateInfos.data();
+	deviceCreateInfo.queueCreateInfoCount	= deviceQueueCreateInfos.size();
+	deviceCreateInfo.enabledLayerCount		= 0;
 
 #ifdef _DEBUG
-	deviceCreateInfo.enabledLayerCount = (uint32_t)this->mValidationLayers.size();
+	deviceCreateInfo.enabledLayerCount	 = this->mValidationLayers.size();
 	deviceCreateInfo.ppEnabledLayerNames = this->mValidationLayers.data();
 #endif // _DEBUG
 
@@ -191,6 +202,8 @@ bool VKRenderer::Init(const Window* p_window)
 	result &= PickPhysicalDevice();
 	result &= CreateLogicalDevice();
 	
+	vkGetDeviceQueue(mLogicalDevice, this->mPhysicalDevice.supportedQueues.presentFamily, 0, &mPresentQueue); //Does not return VK_RESULT ??
+
 	return result;
 }
 
