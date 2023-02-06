@@ -3,7 +3,6 @@
 #include "vulkan/vulkan.h"
 
 #include <vector>
-#include <set>
 #include <string>
 
 #include "Utils.h"
@@ -16,7 +15,7 @@ private :
 	
 	//Would like this to be parametrable !
 	const std::vector<const char*> mValidationLayers = { "VK_LAYER_KHRONOS_validation" };
-	const std::set<std::string> mRequiredExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME }; //std::set :(
+	const std::vector<const char*> mRequiredExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME }; //std::set :(
 
 	VkInstance		mVKInstance;
 	VkDevice		mLogicalDevice;
@@ -41,6 +40,7 @@ private :
 
 	//TODO : VKRenderer::CreateLogicalDevice vulkan complain both queues have the same index, but for now whatever
 	bool CreateLogicalDevice();
+
 	bool CreateSwapChain();
 
 //

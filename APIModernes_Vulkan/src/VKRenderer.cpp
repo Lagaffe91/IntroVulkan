@@ -1,4 +1,4 @@
-	#include "Utils.h"
+#include "Utils.h"
 
 #include "GLFW/glfw3.h"
 
@@ -213,12 +213,13 @@ bool VKRenderer::CreateLogicalDevice()
 
 	VkDeviceCreateInfo deviceCreateInfo{};
 
-	deviceCreateInfo.sType					= VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-	deviceCreateInfo.pEnabledFeatures		= &this->mPhysicalDevice.deviceFeatures;
-	deviceCreateInfo.pQueueCreateInfos		= deviceQueueCreateInfos.data();
-	deviceCreateInfo.queueCreateInfoCount	= deviceQueueCreateInfos.size();
-	deviceCreateInfo.enabledLayerCount		= 0;
-
+	deviceCreateInfo.sType						= VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	deviceCreateInfo.pEnabledFeatures			= &this->mPhysicalDevice.deviceFeatures;
+	deviceCreateInfo.pQueueCreateInfos			= deviceQueueCreateInfos.data();
+	deviceCreateInfo.queueCreateInfoCount		= deviceQueueCreateInfos.size();
+	deviceCreateInfo.enabledLayerCount			= 0;
+	deviceCreateInfo.enabledExtensionCount		= this->mRequiredExtensions.size();
+	deviceCreateInfo.ppEnabledExtensionNames	= this->mRequiredExtensions.data();
 #ifdef _DEBUG
 	deviceCreateInfo.enabledLayerCount	 = this->mValidationLayers.size();
 	deviceCreateInfo.ppEnabledLayerNames = this->mValidationLayers.data();
@@ -234,9 +235,7 @@ bool VKRenderer::CreateSwapChain()
 	swapchainCreateInfoKHR.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 	swapchainCreateInfoKHR.surface = this->mRenderingSurface;
 
-
-	vkCreateSwapchainKHR(this->mLogicalDevice, &swapchainCreateInfoKHR, nullptr, &this->mSwapChain);
-	return false;
+	return vkCreateSwapchainKHR(this->mLogicalDevice, &swapchainCreateInfoKHR, nullptr, &this->mSwapChain) == VK_SUCCESS;
 }
 
 //
