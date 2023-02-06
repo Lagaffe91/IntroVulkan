@@ -4,6 +4,7 @@
 
 #include "VKRenderer.h"
 
+
 bool VKRenderer::CreateVKInstance()
 {
 	//
@@ -95,9 +96,70 @@ bool VKRenderer::PickPhysicalDevice()
 	return true;
 }
 
-//TODO: Better way to select gpu ! VKRenderer::GetBestDevice
-//TODO: Refactor VKRenderer::GetBestDevice
-//TODO : VKRenderer::GetBestDevice Crash the program if no suiatable gpu
+bool VKRenderer::CheckDeviceExtentions(const VkPhysicalDevice& p_device)
+{
+	uint32_t extentionCount = 0;
+	vkEnumerateDeviceExtensionProperties(p_device, nullptr, &extentionCount, nullptr);
+
+	std::vector<VkExtensionProperties> deviceExtentions;
+	vkEnumerateDeviceExtensionProperties(p_device, nullptr, &extentionCount, deviceExtentions.data());
+
+	std::set<std::string> requiredExtentions = mRequiredExtensions;
+
+	for (const VkExtensionProperties& extention : deviceExtentions)
+	{
+		requiredExtentions.erase(extention.extensionName);
+	}
+
+	return requiredExtentions.empty();
+}
+
+bool VKRenderer::DeviceIsSupported(const VkPhysicalDevice& p_device)
+{
+	VkPhysicalDeviceProperties deviceProperties;
+	vkGetPhysicalDeviceProperties(p_device, &deviceProperties);
+
+	VkPhysicalDeviceFeatures deviceFeatures;
+	vkGetPhysicalDeviceFeatures(p_device, &deviceFeatures);
+
+	bool extentionsSupported = this->CheckDeviceExtentions(p_device);
+
+	return (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && deviceFeatures.geometryShader);
+}
+
+DeviceSupportedQueues VKRenderer::GetDeviceSupportedQueues(const VkPhysicalDevice& p_device)
+{
+	DeviceSupportedQueues result;
+
+	uint32_t queueCount = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(p_device, &queueCount, nullptr);
+
+	std::vector<VkQueueFamilyProperties> queueFamilies(queueCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(p_device, &queueCount, queueFamilies.data());
+
+	uint32_t i = 0;
+	for (const VkQueueFamilyProperties& queues : queueFamilies)
+	{
+		if (queues.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+			result.graphicsFamily = i;
+
+		VkBool32 presentSupport = false;
+		vkGetPhysicalDeviceSurfaceSupportKHR(p_device, i, this->mRenderingSurface, &presentSupport);
+
+		if (presentSupport)
+			result.presentFamily = i;
+
+		if (result.isComplete())
+		{
+			return result;
+		}
+
+		i++;
+	}
+
+	return result;
+}
+
 PhysicalDeviceDescription VKRenderer::GetBestDevice(const std::vector<VkPhysicalDevice>& p_devices)
 {
 	PhysicalDeviceDescription result;
@@ -106,48 +168,19 @@ PhysicalDeviceDescription VKRenderer::GetBestDevice(const std::vector<VkPhysical
 
 	for (const VkPhysicalDevice& device : p_devices)
 	{
-		if (deviceFound)
-			break;
-
-		VkPhysicalDeviceProperties deviceProperties;
-		vkGetPhysicalDeviceProperties(device, &deviceProperties);
-		
-		VkPhysicalDeviceFeatures deviceFeatures;
-		vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
-		
-		if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && deviceFeatures.geometryShader)
+		if (this->DeviceIsSupported(device))
 		{
-			DeviceSupportedQueues supportedQueues;
+			DeviceSupportedQueues supportedQueues = this->GetDeviceSupportedQueues(device);
 
-			uint32_t queueCount = 0;
-			vkGetPhysicalDeviceQueueFamilyProperties(device, &queueCount, nullptr);
-
-			std::vector<VkQueueFamilyProperties> queueFamilies(queueCount);
-			vkGetPhysicalDeviceQueueFamilyProperties(device, &queueCount, queueFamilies.data());
-			
-			uint32_t i = 0;
-			for(const VkQueueFamilyProperties &queues : queueFamilies)
+			if (supportedQueues.isComplete())
 			{
-				if(queues.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-					supportedQueues.graphicsFamily = i;
-		
-				VkBool32 presentSupport = false;
-				vkGetPhysicalDeviceSurfaceSupportKHR(device, i, this->mRenderingSurface, &presentSupport);
+				VkPhysicalDeviceFeatures deviceFeatures;
+				vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
 
-				if (presentSupport)
-					supportedQueues.presentFamily = i;
-
-				if (supportedQueues.isComplete())
-				{
-					deviceFound = true;
-
-					result.physicalDevice	= device;
-					result.supportedQueues	= supportedQueues;
-					result.deviceFeatures	= deviceFeatures;
-					break;
-				}
-				
-				i++;
+				result.physicalDevice	= device;
+				result.supportedQueues	= supportedQueues;
+				result.deviceFeatures	= deviceFeatures;
+				break;
 			}
 		}
 	}
@@ -194,13 +227,30 @@ bool VKRenderer::CreateLogicalDevice()
 	return vkCreateDevice(this->mPhysicalDevice.physicalDevice, &deviceCreateInfo, nullptr, &this->mLogicalDevice) == VK_SUCCESS;
 }
 
+bool VKRenderer::CreateSwapChain()
+{
+	VkSwapchainCreateInfoKHR swapchainCreateInfoKHR{};
+
+	swapchainCreateInfoKHR.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+	swapchainCreateInfoKHR.surface = this->mRenderingSurface;
+
+
+	vkCreateSwapchainKHR(this->mLogicalDevice, &swapchainCreateInfoKHR, nullptr, &this->mSwapChain);
+	return false;
+}
+
+//
+//IRenderer implementation
+//
+
 bool VKRenderer::Init(const Window* p_window)
 {
 	bool result = this->CreateVKInstance();
 	
 	result &= glfwCreateWindowSurface(this->mVKInstance, p_window->mWindow , nullptr, &this->mRenderingSurface) == VK_SUCCESS;
-	result &= PickPhysicalDevice();
-	result &= CreateLogicalDevice();
+	result &= this->PickPhysicalDevice();
+	result &= this->CreateLogicalDevice();
+	result &= this->CreateSwapChain();
 	
 	vkGetDeviceQueue(mLogicalDevice, this->mPhysicalDevice.supportedQueues.presentFamily, 0, &mPresentQueue); //Does not return VK_RESULT ??
 
