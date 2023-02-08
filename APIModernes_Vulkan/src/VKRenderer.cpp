@@ -162,9 +162,9 @@ DeviceSupportedQueues VKRenderer::GetDeviceSupportedQueues(const VkPhysicalDevic
 	return result;
 }
 
-SwapChainParameters VKRenderer::GetSwapChainParameters(const VkPhysicalDevice& p_device)
+SwapChainCapabilities VKRenderer::GetSwapChainParameters(const VkPhysicalDevice& p_device)
 {
-	SwapChainParameters swapChainParameters;
+	SwapChainCapabilities swapChainParameters;
 
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(p_device, this->mRenderingSurface, &swapChainParameters.surfaceCapabilities);
 
@@ -207,7 +207,7 @@ PhysicalDeviceDescription VKRenderer::GetBestDevice(const std::vector<VkPhysical
 		if (!supportedQueues.isComplete())
 			continue;
 		
-		SwapChainParameters parameters = this->GetSwapChainParameters(device);
+		SwapChainCapabilities parameters = this->GetSwapChainParameters(device);
 
 		if (!parameters.isComplete())
 		{
@@ -257,14 +257,14 @@ bool VKRenderer::CreateLogicalDevice()
 	deviceCreateInfo.sType						= VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 	deviceCreateInfo.pEnabledFeatures			= &this->mPhysicalDevice.deviceFeatures;
 	deviceCreateInfo.pQueueCreateInfos			= deviceQueueCreateInfos.data();
-	deviceCreateInfo.queueCreateInfoCount		= deviceQueueCreateInfos.size();
+	deviceCreateInfo.queueCreateInfoCount		= (uint32_t)deviceQueueCreateInfos.size();
 	deviceCreateInfo.enabledLayerCount			= 0;
-	deviceCreateInfo.enabledExtensionCount		= this->mExtensions.size();
 	deviceCreateInfo.ppEnabledExtensionNames	= this->mExtensions.data();
+	deviceCreateInfo.enabledExtensionCount		= (uint32_t)this->mExtensions.size();
 
 #ifdef _DEBUG
-	deviceCreateInfo.enabledLayerCount	 = this->mValidationLayers.size();
 	deviceCreateInfo.ppEnabledLayerNames = this->mValidationLayers.data();
+	deviceCreateInfo.enabledLayerCount	 = (uint32_t)this->mValidationLayers.size();
 #endif // _DEBUG
 
 	return vkCreateDevice(this->mPhysicalDevice.physicalDevice, &deviceCreateInfo, nullptr, &this->mLogicalDevice) == VK_SUCCESS;

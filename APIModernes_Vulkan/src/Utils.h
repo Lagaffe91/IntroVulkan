@@ -37,7 +37,7 @@ struct DeviceSupportedQueues
 	}
 };
 
-struct SwapChainParameters
+struct SwapChainCapabilities
 {
 	VkSurfaceCapabilitiesKHR		surfaceCapabilities;
 	std::vector<VkSurfaceFormatKHR> formats;
@@ -55,6 +55,6 @@ struct PhysicalDeviceDescription
 	VkPhysicalDeviceFeatures	deviceFeatures;
 
 	DeviceSupportedQueues		supportedQueues;
-	SwapChainParameters			swapChainParameters;
+	SwapChainCapabilities			swapChainParameters;
 };
 #pragma endregion Vulkan Renderer

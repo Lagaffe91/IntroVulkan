@@ -34,7 +34,7 @@ private :
 	bool DeviceIsSupported(const VkPhysicalDevice& p_device);
 
 	DeviceSupportedQueues GetDeviceSupportedQueues(const VkPhysicalDevice& p_device);
-	SwapChainParameters GetSwapChainParameters(const VkPhysicalDevice& p_device);
+	SwapChainCapabilities GetSwapChainParameters(const VkPhysicalDevice& p_device);
 	//TODO: Better way to select gpu ! VKRenderer::GetBestDevice
 	//TODO : VKRenderer::GetBestDevice Crash the program if no suiatable gpu
 	PhysicalDeviceDescription GetBestDevice(const std::vector<VkPhysicalDevice>& p_devices);
