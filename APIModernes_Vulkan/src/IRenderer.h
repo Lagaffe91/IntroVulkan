@@ -4,7 +4,10 @@
 
 class IRenderer
 {
+protected:
+	Window* mRenderingWindow;
+
 public:
-	virtual bool Init(const Window* p_window) = 0;
+	virtual bool Init(Window* p_window);
 	virtual void Release() = 0;
 };

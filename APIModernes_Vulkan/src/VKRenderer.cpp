@@ -1,3 +1,5 @@
+#include <set>
+
 #include "Utils.h"
 
 #include "GLFW/glfw3.h"
@@ -104,7 +106,7 @@ bool VKRenderer::CheckDeviceExtentions(const VkPhysicalDevice& p_device)
 	std::vector<VkExtensionProperties> deviceExtentions;
 	vkEnumerateDeviceExtensionProperties(p_device, nullptr, &extentionCount, deviceExtentions.data());
 
-	std::set<std::string> requiredExtentions = mRequiredExtensions;
+	std::set<std::string> requiredExtentions(this->mExtensions.begin(), this->mExtensions.end());
 
 	for (const VkExtensionProperties& extention : deviceExtentions)
 	{
@@ -160,6 +162,35 @@ DeviceSupportedQueues VKRenderer::GetDeviceSupportedQueues(const VkPhysicalDevic
 	return result;
 }
 
+SwapChainParameters VKRenderer::GetSwapChainParameters(const VkPhysicalDevice& p_device)
+{
+	SwapChainParameters swapChainParameters;
+
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(p_device, this->mRenderingSurface, &swapChainParameters.surfaceCapabilities);
+
+	uint32_t formatCount = 0;
+
+	vkGetPhysicalDeviceSurfaceFormatsKHR(p_device, this->mRenderingSurface, &formatCount, nullptr);
+
+	if (formatCount != 0)
+	{
+		swapChainParameters.formats = std::vector<VkSurfaceFormatKHR>(formatCount);
+		vkGetPhysicalDeviceSurfaceFormatsKHR(p_device, this->mRenderingSurface, &formatCount, swapChainParameters.formats.data());
+	}
+
+	uint32_t modesCount = 0;
+
+	vkGetPhysicalDeviceSurfacePresentModesKHR(p_device, this->mRenderingSurface, &modesCount, nullptr);
+
+	if (modesCount != 0)
+	{
+		swapChainParameters.presentModes = std::vector<VkPresentModeKHR>(modesCount);
+		vkGetPhysicalDeviceSurfacePresentModesKHR(p_device, this->mRenderingSurface, &modesCount, swapChainParameters.presentModes.data());
+	}
+
+	return swapChainParameters;
+}
+
 PhysicalDeviceDescription VKRenderer::GetBestDevice(const std::vector<VkPhysicalDevice>& p_devices)
 {
 	PhysicalDeviceDescription result;
@@ -168,20 +199,30 @@ PhysicalDeviceDescription VKRenderer::GetBestDevice(const std::vector<VkPhysical
 
 	for (const VkPhysicalDevice& device : p_devices)
 	{
-		if (this->DeviceIsSupported(device))
+		if (!this->DeviceIsSupported(device))
+			continue;
+		
+		DeviceSupportedQueues supportedQueues = this->GetDeviceSupportedQueues(device);
+
+		if (!supportedQueues.isComplete())
+			continue;
+		
+		SwapChainParameters parameters = this->GetSwapChainParameters(device);
+
+		if (!parameters.isComplete())
 		{
-			DeviceSupportedQueues supportedQueues = this->GetDeviceSupportedQueues(device);
+			continue; //Crash the program somehow
+		}
+		else
+		{
+			VkPhysicalDeviceFeatures deviceFeatures;
+			vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
 
-			if (supportedQueues.isComplete())
-			{
-				VkPhysicalDeviceFeatures deviceFeatures;
-				vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
-
-				result.physicalDevice	= device;
-				result.supportedQueues	= supportedQueues;
-				result.deviceFeatures	= deviceFeatures;
-				break;
-			}
+			result.physicalDevice = device;
+			result.supportedQueues = supportedQueues;
+			result.deviceFeatures = deviceFeatures;
+			result.swapChainParameters = parameters;
+			break;
 		}
 	}
 
@@ -197,7 +238,7 @@ bool VKRenderer::CreateLogicalDevice()
 	queuesIdx.push_back(this->mPhysicalDevice.supportedQueues.presentFamily);
 	queuesIdx.push_back(this->mPhysicalDevice.supportedQueues.graphicsFamily);
 	
-	const float queuePriorities = 1.0f;
+	constexpr float queuePriorities = 1.0f;
 
 	for(int32_t queue : queuesIdx)
 	{ 
@@ -218,8 +259,9 @@ bool VKRenderer::CreateLogicalDevice()
 	deviceCreateInfo.pQueueCreateInfos			= deviceQueueCreateInfos.data();
 	deviceCreateInfo.queueCreateInfoCount		= deviceQueueCreateInfos.size();
 	deviceCreateInfo.enabledLayerCount			= 0;
-	deviceCreateInfo.enabledExtensionCount		= this->mRequiredExtensions.size();
-	deviceCreateInfo.ppEnabledExtensionNames	= this->mRequiredExtensions.data();
+	deviceCreateInfo.enabledExtensionCount		= this->mExtensions.size();
+	deviceCreateInfo.ppEnabledExtensionNames	= this->mExtensions.data();
+
 #ifdef _DEBUG
 	deviceCreateInfo.enabledLayerCount	 = this->mValidationLayers.size();
 	deviceCreateInfo.ppEnabledLayerNames = this->mValidationLayers.data();
@@ -228,12 +270,91 @@ bool VKRenderer::CreateLogicalDevice()
 	return vkCreateDevice(this->mPhysicalDevice.physicalDevice, &deviceCreateInfo, nullptr, &this->mLogicalDevice) == VK_SUCCESS;
 }
 
+//Inline really matter ? feel like compiler will do it anyway
+inline VkSurfaceFormatKHR GetSwapchainSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats)
+{
+	for (const VkSurfaceFormatKHR& format :formats)
+	{
+		if (format.format == VK_FORMAT_B8G8R8A8_SRGB && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+		{
+			return format;
+		}
+	}
+
+	return formats[0];
+}
+
+inline VkExtent2D VKRenderer::GetSwapchainExtent(const VkSurfaceCapabilitiesKHR& surfaceCapabilities)
+{
+	if (surfaceCapabilities.currentExtent.width != UINT32_MAX)
+	{
+		return surfaceCapabilities.currentExtent;
+	}
+	else
+	{
+		int width, height;
+
+		glfwGetFramebufferSize(this->mRenderingWindow->mWindow, &width, &height);
+
+		VkExtent2D currentExtent =
+		{
+			(uint32_t)(width),
+			(uint32_t)(height)
+		};
+
+		return currentExtent;
+	}
+}
+
 bool VKRenderer::CreateSwapChain()
 {
+	VkSurfaceFormatKHR	imageFormat = GetSwapchainSurfaceFormat(this->mPhysicalDevice.swapChainParameters.formats);
+	VkExtent2D			imageExtent = GetSwapchainExtent(this->mPhysicalDevice.swapChainParameters.surfaceCapabilities);
+
+	uint32_t imageCount = this->mPhysicalDevice.swapChainParameters.surfaceCapabilities.minImageCount + 1;
+
+	if (this->mPhysicalDevice.swapChainParameters.surfaceCapabilities.maxImageCount > 0 && imageCount > this->mPhysicalDevice.swapChainParameters.surfaceCapabilities.maxImageCount)
+		imageCount = this->mPhysicalDevice.swapChainParameters.surfaceCapabilities.maxImageCount;
+
+
 	VkSwapchainCreateInfoKHR swapchainCreateInfoKHR{};
 
-	swapchainCreateInfoKHR.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-	swapchainCreateInfoKHR.surface = this->mRenderingSurface;
+	swapchainCreateInfoKHR.sType			= VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+	swapchainCreateInfoKHR.surface			= this->mRenderingSurface;
+	swapchainCreateInfoKHR.oldSwapchain		= VK_NULL_HANDLE;
+	swapchainCreateInfoKHR.presentMode		= VK_PRESENT_MODE_FIFO_KHR;		//Hardcoded
+	swapchainCreateInfoKHR.clipped			= VK_TRUE;
+
+	swapchainCreateInfoKHR.imageFormat		= imageFormat.format;
+	swapchainCreateInfoKHR.imageColorSpace	= imageFormat.colorSpace;
+
+	swapchainCreateInfoKHR.imageExtent		= imageExtent;
+
+	swapchainCreateInfoKHR.imageArrayLayers = 1;
+	swapchainCreateInfoKHR.imageUsage		= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+	swapchainCreateInfoKHR.minImageCount	= imageCount;
+	
+	if (this->mPhysicalDevice.supportedQueues.graphicsFamily != this->mPhysicalDevice.supportedQueues.presentFamily)
+	{
+		uint32_t queueFamilyIndices[] = { this->mPhysicalDevice.supportedQueues.graphicsFamily, this->mPhysicalDevice.supportedQueues.presentFamily };
+
+		swapchainCreateInfoKHR.imageSharingMode			= VK_SHARING_MODE_CONCURRENT;
+		swapchainCreateInfoKHR.queueFamilyIndexCount	= 2;
+		swapchainCreateInfoKHR.pQueueFamilyIndices		= queueFamilyIndices;
+	}
+	else 
+	{
+		swapchainCreateInfoKHR.imageSharingMode			= VK_SHARING_MODE_EXCLUSIVE;
+	}
+
+	swapchainCreateInfoKHR.preTransform = this->mPhysicalDevice.swapChainParameters.surfaceCapabilities.currentTransform;
+	swapchainCreateInfoKHR.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+
+
+
+	//composite alpha
+	//preTransform (me souvient)
 
 	return vkCreateSwapchainKHR(this->mLogicalDevice, &swapchainCreateInfoKHR, nullptr, &this->mSwapChain) == VK_SUCCESS;
 }
@@ -242,11 +363,13 @@ bool VKRenderer::CreateSwapChain()
 //IRenderer implementation
 //
 
-bool VKRenderer::Init(const Window* p_window)
+bool VKRenderer::Init(Window* p_window)
 {
+	__super::Init(p_window);
+
 	bool result = this->CreateVKInstance();
 	
-	result &= glfwCreateWindowSurface(this->mVKInstance, p_window->mWindow , nullptr, &this->mRenderingSurface) == VK_SUCCESS;
+	result &= glfwCreateWindowSurface(this->mVKInstance, this->mRenderingWindow->mWindow , nullptr, &this->mRenderingSurface) == VK_SUCCESS;
 	result &= this->PickPhysicalDevice();
 	result &= this->CreateLogicalDevice();
 	result &= this->CreateSwapChain();
@@ -258,9 +381,15 @@ bool VKRenderer::Init(const Window* p_window)
 
 void VKRenderer::Release()
 {
-	vkDestroyDevice(this->mLogicalDevice, nullptr);
+	vkDestroySwapchainKHR(this->mLogicalDevice, this->mSwapChain, nullptr);
+
 	vkDestroySurfaceKHR(this->mVKInstance, this->mRenderingSurface, nullptr);
 
+	vkDestroyDevice(this->mLogicalDevice, nullptr);
+
+	//
 	//Destory the instance at the very end !
+	//
+
 	vkDestroyInstance(this->mVKInstance, nullptr);
 }

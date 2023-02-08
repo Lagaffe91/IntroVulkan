@@ -15,7 +15,7 @@ private :
 	
 	//Would like this to be parametrable !
 	const std::vector<const char*> mValidationLayers = { "VK_LAYER_KHRONOS_validation" };
-	const std::vector<const char*> mRequiredExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME }; //std::set :(
+	const std::vector<const char*> mExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME }; //std::set :(
 
 	VkInstance		mVKInstance;
 	VkDevice		mLogicalDevice;
@@ -32,15 +32,19 @@ private :
 
 	bool CheckDeviceExtentions(const VkPhysicalDevice& p_device);
 	bool DeviceIsSupported(const VkPhysicalDevice& p_device);
-	DeviceSupportedQueues GetDeviceSupportedQueues(const VkPhysicalDevice& p_device);
 
+	DeviceSupportedQueues GetDeviceSupportedQueues(const VkPhysicalDevice& p_device);
+	SwapChainParameters GetSwapChainParameters(const VkPhysicalDevice& p_device);
 	//TODO: Better way to select gpu ! VKRenderer::GetBestDevice
 	//TODO : VKRenderer::GetBestDevice Crash the program if no suiatable gpu
 	PhysicalDeviceDescription GetBestDevice(const std::vector<VkPhysicalDevice>& p_devices);
 
-	//TODO : VKRenderer::CreateLogicalDevice vulkan complain both queues have the same index, but for now whatever
+	//TODO : VKRenderer::CreateLogicalDevice : Vulkan complain both queues have the same index, but for now whatever
 	bool CreateLogicalDevice();
 
+	VkExtent2D GetSwapchainExtent(const VkSurfaceCapabilitiesKHR& surfaceCapabilities);
+
+	//TODO : VKRenderer::CreateLogicalDevice : presentMode is hardcoded to FIFO (i dont want anything else, but could be cool to make it parametrable)
 	bool CreateSwapChain();
 
 //
@@ -48,6 +52,6 @@ private :
 //
 
 public:
-	bool Init(const Window* p_window) override;
+	bool Init(Window* p_window) override;
 	void Release() override;
 };

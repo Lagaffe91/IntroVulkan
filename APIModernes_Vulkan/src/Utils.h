@@ -45,7 +45,7 @@ struct SwapChainParameters
 
 	bool isComplete()
 	{
-		return formats.empty() && presentModes.empty();
+		return !formats.empty() && !presentModes.empty();
 	}
 };
 
