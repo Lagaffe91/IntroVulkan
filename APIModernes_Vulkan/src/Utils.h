@@ -55,6 +55,16 @@ struct PhysicalDeviceDescription
 	VkPhysicalDeviceFeatures	deviceFeatures;
 
 	DeviceSupportedQueues		supportedQueues;
-	SwapChainCapabilities			swapChainParameters;
+	SwapChainCapabilities		swapChainParameters;
+};
+
+struct SwapChainDescription
+{	
+	VkSwapchainKHR			vkSwapChain;
+
+	VkFormat				imageFormat;
+	VkExtent2D				extent;
+
+	std::vector<VkImage>	images;
 };
 #pragma endregion Vulkan Renderer

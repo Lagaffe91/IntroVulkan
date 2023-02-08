@@ -20,10 +20,11 @@ private :
 	VkInstance		mVKInstance;
 	VkDevice		mLogicalDevice;
 	VkSurfaceKHR	mRenderingSurface;
-	VkQueue			mPresentQueue;
-	VkSwapchainKHR	mSwapChain;
 
-	PhysicalDeviceDescription mPhysicalDevice;
+	VkQueue			mPresentQueue;
+
+	PhysicalDeviceDescription	mPhysicalDevice;
+	SwapChainDescription		mSwapChain;
 
 private :
 	bool CreateVKInstance();

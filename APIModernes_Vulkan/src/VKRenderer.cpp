@@ -351,12 +351,29 @@ bool VKRenderer::CreateSwapChain()
 	swapchainCreateInfoKHR.preTransform = this->mPhysicalDevice.swapChainParameters.surfaceCapabilities.currentTransform;
 	swapchainCreateInfoKHR.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 
+	SwapChainDescription createdSwapChain {};
 
+	if (vkCreateSwapchainKHR(this->mLogicalDevice, &swapchainCreateInfoKHR, nullptr, &createdSwapChain.vkSwapChain) == VK_SUCCESS)
+	{
+		uint32_t imageCount = 0;
+		
+		vkGetSwapchainImagesKHR(this->mLogicalDevice, createdSwapChain.vkSwapChain, &imageCount, nullptr);
+		
+		createdSwapChain.images = std::vector<VkImage>(imageCount);
+		
+		vkGetSwapchainImagesKHR(this->mLogicalDevice, createdSwapChain.vkSwapChain, &imageCount, createdSwapChain.images.data());
 
-	//composite alpha
-	//preTransform (me souvient)
+		createdSwapChain.extent = imageExtent;
+		createdSwapChain.imageFormat = imageFormat.format;
 
-	return vkCreateSwapchainKHR(this->mLogicalDevice, &swapchainCreateInfoKHR, nullptr, &this->mSwapChain) == VK_SUCCESS;
+		this->mSwapChain = createdSwapChain;
+
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 
 //
@@ -374,14 +391,14 @@ bool VKRenderer::Init(Window* p_window)
 	result &= this->CreateLogicalDevice();
 	result &= this->CreateSwapChain();
 	
-	vkGetDeviceQueue(mLogicalDevice, this->mPhysicalDevice.supportedQueues.presentFamily, 0, &mPresentQueue); //Does not return VK_RESULT ??
+	vkGetDeviceQueue(mLogicalDevice, this->mPhysicalDevice.supportedQueues.presentFamily, 0, &mPresentQueue); //Does not return VK_RESULT //Move this to a struct ?
 
 	return result;
 }
 
 void VKRenderer::Release()
 {
-	vkDestroySwapchainKHR(this->mLogicalDevice, this->mSwapChain, nullptr);
+	vkDestroySwapchainKHR(this->mLogicalDevice, this->mSwapChain.vkSwapChain, nullptr);
 
 	vkDestroySurfaceKHR(this->mVKInstance, this->mRenderingSurface, nullptr);
 
