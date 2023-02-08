@@ -317,6 +317,10 @@ bool VKRenderer::CreateSwapChain()
 		imageCount = this->mPhysicalDevice.swapChainParameters.surfaceCapabilities.maxImageCount;
 
 
+	//
+	//Fill the structure
+	//
+
 	VkSwapchainCreateInfoKHR swapchainCreateInfoKHR{};
 
 	swapchainCreateInfoKHR.sType			= VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -351,6 +355,10 @@ bool VKRenderer::CreateSwapChain()
 	swapchainCreateInfoKHR.preTransform = this->mPhysicalDevice.swapChainParameters.surfaceCapabilities.currentTransform;
 	swapchainCreateInfoKHR.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 
+	//
+	//Acutally create and fill the swapchain struct
+	//
+
 	SwapChainDescription createdSwapChain {};
 
 	if (vkCreateSwapchainKHR(this->mLogicalDevice, &swapchainCreateInfoKHR, nullptr, &createdSwapChain.vkSwapChain) == VK_SUCCESS)
@@ -359,15 +367,41 @@ bool VKRenderer::CreateSwapChain()
 		
 		vkGetSwapchainImagesKHR(this->mLogicalDevice, createdSwapChain.vkSwapChain, &imageCount, nullptr);
 		
-		createdSwapChain.images = std::vector<VkImage>(imageCount);
+		createdSwapChain.images		= std::vector<VkImage>(imageCount);
+		createdSwapChain.imageViews = std::vector<VkImageView>(imageCount);
 		
 		vkGetSwapchainImagesKHR(this->mLogicalDevice, createdSwapChain.vkSwapChain, &imageCount, createdSwapChain.images.data());
 
 		createdSwapChain.extent = imageExtent;
 		createdSwapChain.imageFormat = imageFormat.format;
 
-		this->mSwapChain = createdSwapChain;
+		int i = 0;
+		for (VkImageView& imageView : this->mSwapChain.imageViews)
+		{
+			VkImageViewCreateInfo imageViewCreateInfo{};
 
+			imageViewCreateInfo.sType		= VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+			imageViewCreateInfo.image		= createdSwapChain.images[i];
+			imageViewCreateInfo.format		= imageFormat.format;
+			imageViewCreateInfo.viewType	= VK_IMAGE_VIEW_TYPE_2D;
+
+			imageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+			imageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+			imageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+			imageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+			imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+			imageViewCreateInfo.subresourceRange.levelCount = 1;
+			imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+			imageViewCreateInfo.subresourceRange.layerCount = 1;
+
+			vkCreateImageView(this->mLogicalDevice, &imageViewCreateInfo, nullptr, &imageView);
+
+			i++;
+		}
+
+		this->mSwapChain = createdSwapChain;
 		return true;
 	}
 	else
@@ -387,6 +421,7 @@ bool VKRenderer::Init(Window* p_window)
 	bool result = this->CreateVKInstance();
 	
 	result &= glfwCreateWindowSurface(this->mVKInstance, this->mRenderingWindow->mWindow , nullptr, &this->mRenderingSurface) == VK_SUCCESS;
+
 	result &= this->PickPhysicalDevice();
 	result &= this->CreateLogicalDevice();
 	result &= this->CreateSwapChain();
@@ -398,6 +433,9 @@ bool VKRenderer::Init(Window* p_window)
 
 void VKRenderer::Release()
 {
+	for (const VkImageView& imageView : this->mSwapChain.imageViews)
+		vkDestroyImageView(this->mLogicalDevice, imageView, nullptr);
+
 	vkDestroySwapchainKHR(this->mLogicalDevice, this->mSwapChain.vkSwapChain, nullptr);
 
 	vkDestroySurfaceKHR(this->mVKInstance, this->mRenderingSurface, nullptr);

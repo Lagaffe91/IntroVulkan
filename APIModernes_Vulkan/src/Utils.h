@@ -60,11 +60,12 @@ struct PhysicalDeviceDescription
 
 struct SwapChainDescription
 {	
-	VkSwapchainKHR			vkSwapChain;
+	VkSwapchainKHR				vkSwapChain;
 
-	VkFormat				imageFormat;
-	VkExtent2D				extent;
+	VkFormat					imageFormat;
+	VkExtent2D					extent;
 
-	std::vector<VkImage>	images;
+	std::vector<VkImage>		images;
+	std::vector<VkImageView>	imageViews;
 };
 #pragma endregion Vulkan Renderer
