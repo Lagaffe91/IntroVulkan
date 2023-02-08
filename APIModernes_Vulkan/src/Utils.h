@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <vector>
 
 #include "vulkan/vulkan.h"
 
@@ -22,6 +23,8 @@
 
 #pragma endregion App Parameters
 
+
+//TODO : Add VKUtils namespace (in case multiple renderers)
 #pragma region Utils Vulkan Renderer
 struct DeviceSupportedQueues
 {
@@ -34,11 +37,24 @@ struct DeviceSupportedQueues
 	}
 };
 
+struct SwapChainParameters
+{
+	VkSurfaceCapabilitiesKHR		surfaceCapabilities;
+	std::vector<VkSurfaceFormatKHR> formats;
+	std::vector<VkPresentModeKHR>	presentModes;
+
+	bool isComplete()
+	{
+		return formats.empty() && presentModes.empty();
+	}
+};
+
 struct PhysicalDeviceDescription
 {
 	VkPhysicalDevice			physicalDevice;
 	VkPhysicalDeviceFeatures	deviceFeatures;
 
 	DeviceSupportedQueues		supportedQueues;
+	SwapChainParameters			swapChainParameters;
 };
 #pragma endregion Vulkan Renderer
