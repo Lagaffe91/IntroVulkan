@@ -412,6 +412,9 @@ bool VKRenderer::CreateSwapChain()
 
 bool VKRenderer::SetupGraphicsPipeline()
 {
+	//
+	//Shaders
+	//
 	const std::vector<char> vertexByteCode		= ParseShaderFile("/shaders/triangle.vert.spv");
 	const std::vector<char> fragmentByteCode	= ParseShaderFile("/shaders/triangle.frag.spv");
 
@@ -436,6 +439,16 @@ bool VKRenderer::SetupGraphicsPipeline()
 	fragShaderStageInfo.pName = "main";
 
 	this->mShaderStages = { vertShaderStageInfo, fragShaderStageInfo };
+
+	//
+	//Pipeline layout
+	//
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+
+	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+
+	if (vkCreatePipelineLayout(this->mLogicalDevice, &pipelineLayoutInfo, nullptr, &this->mPipelineLayout) != VK_SUCCESS)
+		return false;
 
 	return true;
 }
@@ -482,7 +495,9 @@ bool VKRenderer::Init(Window* p_window)
 
 void VKRenderer::Release()
 {
-	//shaders
+	vkDestroyPipelineLayout(this->mLogicalDevice, this->mPipelineLayout, nullptr);
+
+	//shader modules
 	vkDestroyShaderModule(this->mLogicalDevice, this->mFragmentShader, nullptr);
 	vkDestroyShaderModule(this->mLogicalDevice, this->mVertexShader, nullptr);
 

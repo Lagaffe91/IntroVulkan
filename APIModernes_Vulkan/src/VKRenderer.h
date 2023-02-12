@@ -30,6 +30,8 @@ private :
 	VkShaderModule mFragmentShader;
 	std::vector<VkPipelineShaderStageCreateInfo> mShaderStages;
 
+	VkPipelineLayout mPipelineLayout;
+
 private :
 	bool CreateVKInstance();
 	bool CanEnableValidationLayers(const std::vector<const char*>& p_validationLayers);
