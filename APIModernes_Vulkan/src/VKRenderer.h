@@ -12,10 +12,10 @@
 class VKRenderer : public IRenderer
 {
 private :
-	
-	//Would like this to be parametrable !
+
+	//Would like this to be parametrable ?
 	const std::vector<const char*> mValidationLayers = { "VK_LAYER_KHRONOS_validation" };
-	const std::vector<const char*> mExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME }; //std::set :(
+	const std::vector<const char*> mExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
 	VkInstance		mVKInstance;
 	VkDevice		mLogicalDevice;
@@ -25,6 +25,10 @@ private :
 
 	PhysicalDeviceDescription	mPhysicalDevice;
 	SwapChainDescription		mSwapChain;
+
+	VkShaderModule mVertexShader;
+	VkShaderModule mFragmentShader;
+	std::vector<VkPipelineShaderStageCreateInfo> mShaderStages;
 
 private :
 	bool CreateVKInstance();
@@ -47,6 +51,10 @@ private :
 
 	//TODO : VKRenderer::CreateLogicalDevice : presentMode is hardcoded to FIFO (i dont want anything else, but could be cool to make it parametrable)
 	bool CreateSwapChain();
+	
+	bool SetupGraphicsPipeline();
+
+	VkShaderModule LoadShader(const std::vector<char>& p_byteCode); //should be public ? (ressource manager anyway)
 
 //
 //IRenderer implementation

@@ -410,6 +410,54 @@ bool VKRenderer::CreateSwapChain()
 	}
 }
 
+bool VKRenderer::SetupGraphicsPipeline()
+{
+	const std::vector<char> vertexByteCode		= ParseShaderFile("/shaders/triangle.vert.spv");
+	const std::vector<char> fragmentByteCode	= ParseShaderFile("/shaders/triangle.frag.spv");
+
+	if(vertexByteCode.empty() || fragmentByteCode.empty())
+		return false;
+
+	this->mVertexShader		= this->LoadShader(vertexByteCode);
+	this->mFragmentShader	= this->LoadShader(fragmentByteCode);
+
+	VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
+	vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	vertShaderStageInfo.module = this->mVertexShader;
+	vertShaderStageInfo.pName = "main";
+
+
+	VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
+
+	fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	fragShaderStageInfo.module = this->mVertexShader;
+	fragShaderStageInfo.pName = "main";
+
+	this->mShaderStages = { vertShaderStageInfo, fragShaderStageInfo };
+
+	return true;
+}
+
+VkShaderModule VKRenderer::LoadShader(const std::vector<char>& p_byteCode)
+{
+	if (p_byteCode.empty())
+		return VkShaderModule(); //bad :(
+
+	VkShaderModuleCreateInfo shaderModuleCreateInfo{};
+
+	shaderModuleCreateInfo.sType	= VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	shaderModuleCreateInfo.codeSize = p_byteCode.size();
+	shaderModuleCreateInfo.pCode	= (uint32_t*)p_byteCode.data();
+
+	VkShaderModule shaderModule;
+	if (vkCreateShaderModule(this->mLogicalDevice, &shaderModuleCreateInfo, nullptr, &shaderModule) == VK_SUCCESS)
+		return shaderModule;
+	else
+		return VkShaderModule(); //I really dont know what to do with that
+}
+
 //
 //IRenderer implementation
 //
@@ -425,6 +473,7 @@ bool VKRenderer::Init(Window* p_window)
 	result &= this->PickPhysicalDevice();
 	result &= this->CreateLogicalDevice();
 	result &= this->CreateSwapChain();
+	result &= this->SetupGraphicsPipeline();
 	
 	vkGetDeviceQueue(mLogicalDevice, this->mPhysicalDevice.supportedQueues.presentFamily, 0, &mPresentQueue); //Does not return VK_RESULT //Move this to a struct ?
 
@@ -433,13 +482,16 @@ bool VKRenderer::Init(Window* p_window)
 
 void VKRenderer::Release()
 {
+	//shaders
+	vkDestroyShaderModule(this->mLogicalDevice, this->mFragmentShader, nullptr);
+	vkDestroyShaderModule(this->mLogicalDevice, this->mVertexShader, nullptr);
+
+	//Swapchain
 	for (const VkImageView& imageView : this->mSwapChain.imageViews)
 		vkDestroyImageView(this->mLogicalDevice, imageView, nullptr);
-
 	vkDestroySwapchainKHR(this->mLogicalDevice, this->mSwapChain.vkSwapChain, nullptr);
 
 	vkDestroySurfaceKHR(this->mVKInstance, this->mRenderingSurface, nullptr);
-
 	vkDestroyDevice(this->mLogicalDevice, nullptr);
 
 	//

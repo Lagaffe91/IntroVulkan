@@ -218,6 +218,7 @@
     <ClCompile Include="src\Engine.cpp" />
     <ClCompile Include="src\IRenderer.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\Utils.cpp" />
     <ClCompile Include="src\VKRenderer.cpp" />
     <ClCompile Include="src\Window.cpp" />
   </ItemGroup>

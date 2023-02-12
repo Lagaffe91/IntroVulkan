@@ -69,3 +69,5 @@ struct SwapChainDescription
 	std::vector<VkImageView>	imageViews;
 };
 #pragma endregion Vulkan Renderer
+
+std::vector<char> ParseShaderFile(const char* p_fileName);
