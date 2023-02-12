@@ -425,29 +425,70 @@ bool VKRenderer::SetupGraphicsPipeline()
 	this->mFragmentShader	= this->LoadShader(fragmentByteCode);
 
 	VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
-	vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	vertShaderStageInfo.module = this->mVertexShader;
-	vertShaderStageInfo.pName = "main";
+
+	vertShaderStageInfo.sType	= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vertShaderStageInfo.stage	= VK_SHADER_STAGE_VERTEX_BIT;
+	vertShaderStageInfo.module	= this->mVertexShader;
+	vertShaderStageInfo.pName	= "main";
 
 
 	VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
 
-	fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	fragShaderStageInfo.module = this->mVertexShader;
-	fragShaderStageInfo.pName = "main";
-
+	fragShaderStageInfo.sType	= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	fragShaderStageInfo.stage	= VK_SHADER_STAGE_FRAGMENT_BIT;
+	fragShaderStageInfo.module	= this->mVertexShader;
+	fragShaderStageInfo.pName	= "main";
+		
 	this->mShaderStages = { vertShaderStageInfo, fragShaderStageInfo };
 
 	//
 	//Pipeline layout
 	//
+
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 
 	if (vkCreatePipelineLayout(this->mLogicalDevice, &pipelineLayoutInfo, nullptr, &this->mPipelineLayout) != VK_SUCCESS)
+		return false;
+
+	//
+	//Render pass
+	//
+
+	VkAttachmentReference subPassColorAttachement{};
+
+	subPassColorAttachement.attachment = 0;
+	subPassColorAttachement.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+
+	VkSubpassDescription subpassDescription{};
+	
+	subpassDescription.colorAttachmentCount = 1;
+	subpassDescription.pipelineBindPoint	= VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpassDescription.colorAttachmentCount = 1;
+	subpassDescription.pColorAttachments	= &subPassColorAttachement;
+
+	VkAttachmentDescription colorAttachment{};
+	
+	colorAttachment.format			= this->mSwapChain.imageFormat;
+	colorAttachment.samples			= VK_SAMPLE_COUNT_1_BIT;
+	colorAttachment.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
+	colorAttachment.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
+	colorAttachment.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorAttachment.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	colorAttachment.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
+	colorAttachment.finalLayout		= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+
+	VkRenderPassCreateInfo renderPassCreateInfo{};
+
+	renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	renderPassCreateInfo.attachmentCount = 1;
+	renderPassCreateInfo.subpassCount = 1;
+	renderPassCreateInfo.pSubpasses = &subpassDescription;
+
+	if (vkCreateRenderPass(this->mLogicalDevice, &renderPassCreateInfo, nullptr, &this->mRenderPass) != VK_SUCCESS)
 		return false;
 
 	return true;
@@ -495,7 +536,9 @@ bool VKRenderer::Init(Window* p_window)
 
 void VKRenderer::Release()
 {
+	//Pipeline
 	vkDestroyPipelineLayout(this->mLogicalDevice, this->mPipelineLayout, nullptr);
+	vkDestroyRenderPass(this->mLogicalDevice, this->mRenderPass, nullptr);
 
 	//shader modules
 	vkDestroyShaderModule(this->mLogicalDevice, this->mFragmentShader, nullptr);
@@ -506,12 +549,14 @@ void VKRenderer::Release()
 		vkDestroyImageView(this->mLogicalDevice, imageView, nullptr);
 	vkDestroySwapchainKHR(this->mLogicalDevice, this->mSwapChain.vkSwapChain, nullptr);
 
+	//Other
 	vkDestroySurfaceKHR(this->mVKInstance, this->mRenderingSurface, nullptr);
-	vkDestroyDevice(this->mLogicalDevice, nullptr);
 
 	//
-	//Destory the instance at the very end !
+	//Always destory instance/device at the very end !
 	//
+
+	vkDestroyDevice(this->mLogicalDevice, nullptr);
 
 	vkDestroyInstance(this->mVKInstance, nullptr);
 }

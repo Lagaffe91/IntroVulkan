@@ -30,7 +30,9 @@ private :
 	VkShaderModule mFragmentShader;
 	std::vector<VkPipelineShaderStageCreateInfo> mShaderStages;
 
+	//TODO : Put render pipeline objects in a sturct !
 	VkPipelineLayout mPipelineLayout;
+	VkRenderPass mRenderPass;
 
 private :
 	bool CreateVKInstance();
