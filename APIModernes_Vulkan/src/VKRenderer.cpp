@@ -415,6 +415,7 @@ bool VKRenderer::SetupGraphicsPipeline()
 	//
 	//Shaders
 	//
+
 	const std::vector<char> vertexByteCode		= ParseShaderFile("/shaders/triangle.vert.spv");
 	const std::vector<char> fragmentByteCode	= ParseShaderFile("/shaders/triangle.frag.spv");
 
@@ -490,6 +491,12 @@ bool VKRenderer::SetupGraphicsPipeline()
 
 	if (vkCreateRenderPass(this->mLogicalDevice, &renderPassCreateInfo, nullptr, &this->mRenderPass) != VK_SUCCESS)
 		return false;
+
+	//
+	//Graphics pipeline object
+	//
+
+
 
 	return true;
 }
