@@ -10,4 +10,5 @@ protected:
 public:
 	virtual bool Init(Window* p_window);
 	virtual void Release() = 0;
+	virtual void Render()  = 0;
 };

@@ -62,6 +62,7 @@ int Application::Run(const std::string& p_windowName, const int& p_width, const 
 	while (!mWindow->ShouldClose()) 
 	{
 		glfwPollEvents();
+		this->mRenderer->Render();
 	}
 
 	this->Quit();

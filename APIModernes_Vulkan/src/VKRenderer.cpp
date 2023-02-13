@@ -553,6 +553,16 @@ bool VKRenderer::SetupGraphicsPipeline()
 	colorAttachment.finalLayout		= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 
+	VkSubpassDependency subpassDependency{};
+
+	subpassDependency.srcSubpass	= VK_SUBPASS_EXTERNAL;
+	subpassDependency.dstSubpass	= 0;
+	subpassDependency.srcStageMask	= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	subpassDependency.srcAccessMask = 0;
+	subpassDependency.dstStageMask	= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+
 	VkRenderPassCreateInfo renderPassCreateInfo{};
 
 	renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -560,6 +570,9 @@ bool VKRenderer::SetupGraphicsPipeline()
 	renderPassCreateInfo.pAttachments = &colorAttachment;
 	renderPassCreateInfo.subpassCount = 1;
 	renderPassCreateInfo.pSubpasses = &subpassDescription;
+	renderPassCreateInfo.dependencyCount = 1;
+	renderPassCreateInfo.pDependencies = &subpassDependency;
+
 
 	if (vkCreateRenderPass(this->mLogicalDevice, &renderPassCreateInfo, nullptr, &this->mRenderPass) != VK_SUCCESS)
 		return false;
@@ -651,7 +664,7 @@ bool VKRenderer::CreateCommandBuffer()
 
 
 
-void VKRenderer::RecordCommandBuffer(VkCommandBuffer p_commandBuffer, uint32_t p_imageIndex)
+void VKRenderer::RecordCommandBuffer(VkCommandBuffer& p_commandBuffer, uint32_t p_imageIndex)
 {
 	VkCommandBufferBeginInfo commandBufferBeginInfo{};
 
@@ -715,6 +728,19 @@ VkShaderModule VKRenderer::LoadShader(const std::vector<char>& p_byteCode)
 		return VkShaderModule(); //I really dont know what to do with that
 }
 
+bool VKRenderer::CreateSyncObjects()
+{
+	VkSemaphoreCreateInfo semaphoreCreateInfo{};
+	semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+	VkFenceCreateInfo fenceCreateInfo{};
+	fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+
+	return (vkCreateSemaphore(this->mLogicalDevice, &semaphoreCreateInfo, nullptr, &this->mImageAviableSemaphore) == VK_SUCCESS &&
+			vkCreateSemaphore(this->mLogicalDevice, &semaphoreCreateInfo, nullptr, &this->mRenderingSemaphore) == VK_SUCCESS &&
+			vkCreateFence(this->mLogicalDevice, &fenceCreateInfo, nullptr, &this->mPresentFence) == VK_SUCCESS);
+}
+
 //
 //IRenderer implementation
 //
@@ -733,12 +759,20 @@ bool VKRenderer::Init(Window* p_window)
 	result &= this->SetupGraphicsPipeline();
 	result &= this->CreateFrameBuffers();
 	result &= this->CreateCommandBuffer();
+	result &= this->CreateSyncObjects();
 
 	return result;
 }
 
 void VKRenderer::Release()
 {
+	vkDeviceWaitIdle(this->mLogicalDevice); //Smol security
+
+	//Sync objects
+	vkDestroySemaphore(this->mLogicalDevice, this->mImageAviableSemaphore, nullptr);
+	vkDestroySemaphore(this->mLogicalDevice, this->mRenderingSemaphore, nullptr);
+	vkDestroyFence(this->mLogicalDevice, this->mPresentFence, nullptr);
+
 	//Command buffer
 	vkFreeCommandBuffers(this->mLogicalDevice, this->mCommandPool, 1, &this->mCommandBuffer);
 	vkDestroyCommandPool(this->mLogicalDevice, this->mCommandPool, nullptr);
@@ -771,4 +805,54 @@ void VKRenderer::Release()
 	vkDestroyDevice(this->mLogicalDevice, nullptr);
 
 	vkDestroyInstance(this->mVKInstance, nullptr);
+}
+
+void VKRenderer::Render()
+{
+	vkWaitForFences(this->mLogicalDevice, 1, &this->mPresentFence, VK_TRUE, UINT64_MAX);
+	vkResetFences(this->mLogicalDevice, 1, &this->mPresentFence);
+	
+	uint32_t imageIndex;
+	vkAcquireNextImageKHR(this->mLogicalDevice, this->mSwapChain.vkSwapChain, UINT64_MAX, this->mImageAviableSemaphore, VK_NULL_HANDLE, &imageIndex);
+
+	vkResetCommandBuffer(this->mCommandBuffer, 0);
+
+	this->RecordCommandBuffer(this->mCommandBuffer, imageIndex);
+
+	VkSubmitInfo submitInfo{};
+
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+	VkSemaphore waitSemaphores[] = { this->mImageAviableSemaphore };
+	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = waitSemaphores;
+	submitInfo.pWaitDstStageMask = waitStages;
+
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &this->mCommandBuffer;
+
+	VkSemaphore signalSemaphores[] = { this->mRenderingSemaphore };
+
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = signalSemaphores;
+
+	vkQueueSubmit(this->mGraphicsQueue, 1, &submitInfo, this->mPresentFence);
+	
+	//
+	//Present stuff
+	//
+
+	VkPresentInfoKHR presentInfo{};
+	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.pWaitSemaphores = signalSemaphores;
+	VkSwapchainKHR swapChains[] = { this->mSwapChain.vkSwapChain };
+	presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = swapChains;
+	presentInfo.pImageIndices = &imageIndex;
+
+	vkQueuePresentKHR(this->mPresentQueue, &presentInfo);
+
 }

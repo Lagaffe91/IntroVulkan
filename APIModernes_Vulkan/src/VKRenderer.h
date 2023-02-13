@@ -37,13 +37,19 @@ private :
 	VkPipelineLayout mPipelineLayout;
 	VkRenderPass mRenderPass;
 	VkPipeline mGraphicsPipeline;
+	//------
 
-	//
-
+	//Same
 	std::vector<VkFramebuffer> mFrameBuffers;
-
 	VkCommandPool	mCommandPool;
 	VkCommandBuffer mCommandBuffer;
+	//------
+
+	//Same lmao
+	VkSemaphore mRenderingSemaphore;
+	VkSemaphore mImageAviableSemaphore;
+	VkFence		mPresentFence;
+	//------
 
 private :
 	bool CreateVKInstance();
@@ -73,7 +79,9 @@ private :
 
 	bool CreateCommandBuffer();
 
-	void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+	void RecordCommandBuffer(VkCommandBuffer& commandBuffer, uint32_t imageIndex);
+
+	bool CreateSyncObjects();
 
 public:
 	VkShaderModule LoadShader(const std::vector<char>& p_byteCode); //TODO : put LoadShader() in a Ressource manager or smth
@@ -86,4 +94,5 @@ public:
 public:
 	bool Init(Window* p_window) override;
 	void Release() override;
+	void Render() override;
 };
