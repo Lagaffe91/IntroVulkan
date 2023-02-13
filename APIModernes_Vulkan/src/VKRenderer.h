@@ -27,11 +27,16 @@ private :
 	PhysicalDeviceDescription	mPhysicalDevice;
 	SwapChainDescription		mSwapChain;
 
+
 	VkShaderModule mVertexShader;
 	VkShaderModule mFragmentShader;
-	std::vector<VkPipelineShaderStageCreateInfo> mShaderStages;
 
 	//TODO : Put render pipeline objects in a sturct !
+
+
+
+	std::vector<VkPipelineShaderStageCreateInfo> mShaderStages;
+
 	VkPipelineLayout mPipelineLayout;
 	VkRenderPass mRenderPass;
 	VkPipeline mGraphicsPipeline;
