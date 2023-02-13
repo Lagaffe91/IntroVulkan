@@ -650,6 +650,53 @@ bool VKRenderer::CreateCommandBuffer()
 }
 
 
+
+void VKRenderer::RecordCommandBuffer(VkCommandBuffer p_commandBuffer, uint32_t p_imageIndex)
+{
+	VkCommandBufferBeginInfo commandBufferBeginInfo{};
+
+	commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+	vkBeginCommandBuffer(p_commandBuffer, &commandBufferBeginInfo);
+
+	VkRenderPassBeginInfo renderPassBeginInfo{};
+
+	renderPassBeginInfo.sType				= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassBeginInfo.renderPass			= this->mRenderPass;
+	renderPassBeginInfo.framebuffer			= this->mFrameBuffers[p_imageIndex];
+	renderPassBeginInfo.renderArea.extent	= this->mSwapChain.extent;
+	renderPassBeginInfo.renderArea.offset	= { 0,0 };
+
+	VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
+	renderPassBeginInfo.clearValueCount		= 1;
+	renderPassBeginInfo.pClearValues		= &clearColor;
+
+	vkCmdBeginRenderPass(p_commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+	vkCmdBindPipeline(p_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->mGraphicsPipeline);
+
+	VkViewport viewport{};
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width	= (float)(this->mSwapChain.extent.width);
+	viewport.height = (float)(this->mSwapChain.extent.height);
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+
+	vkCmdSetViewport(p_commandBuffer, 0, 1, &viewport);
+
+	VkRect2D scissor{};
+	scissor.offset = { 0, 0 };
+	scissor.extent = this->mSwapChain.extent;
+
+	vkCmdSetScissor(p_commandBuffer, 0, 1, &scissor);
+
+	vkCmdDraw(p_commandBuffer, 3, 1, 0, 0);
+
+	vkCmdEndRenderPass(p_commandBuffer);
+	vkEndCommandBuffer(p_commandBuffer);
+}
+
 VkShaderModule VKRenderer::LoadShader(const std::vector<char>& p_byteCode)
 {
 	if (p_byteCode.empty())
@@ -718,7 +765,7 @@ void VKRenderer::Release()
 	vkDestroySurfaceKHR(this->mVKInstance, this->mRenderingSurface, nullptr);
 
 	//
-	//Always destory instance/device at the very end !
+	//Always destory device/instance at the very end !
 	//
 
 	vkDestroyDevice(this->mLogicalDevice, nullptr);
