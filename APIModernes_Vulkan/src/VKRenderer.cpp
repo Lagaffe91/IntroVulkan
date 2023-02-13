@@ -619,6 +619,30 @@ bool VKRenderer::CreateFrameBuffers()
 	return true;
 }
 
+bool VKRenderer::CreateCommandBuffer()
+{
+	//
+	//Command pool 
+	//
+
+	VkCommandPoolCreateInfo commandPoolCreateInfo{};
+
+	commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+	commandPoolCreateInfo.queueFamilyIndex = this->mPhysicalDevice.supportedQueues.graphicsFamily;
+
+	bool result = vkCreateCommandPool(this->mLogicalDevice, &commandPoolCreateInfo, nullptr, &this->mCommandPool) == VK_SUCCESS;
+
+	//
+	//Command buffer
+	//
+
+	//result &= vkAllocateCommandBuffers();
+
+	return result;
+}
+
+
 VkShaderModule VKRenderer::LoadShader(const std::vector<char>& p_byteCode)
 {
 	if (p_byteCode.empty())
@@ -660,6 +684,9 @@ bool VKRenderer::Init(Window* p_window)
 
 void VKRenderer::Release()
 {
+	//Command buffer
+	vkDestroyCommandPool(this->mLogicalDevice, this->mCommandPool, nullptr);
+
 	//Framebuffers
 	for (VkFramebuffer frameBuffer : this->mFrameBuffers)
 		vkDestroyFramebuffer(this->mLogicalDevice, frameBuffer, nullptr);

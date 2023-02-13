@@ -42,6 +42,7 @@ private :
 
 	std::vector<VkFramebuffer> mFrameBuffers;
 
+	VkCommandPool mCommandPool;
 
 private :
 	bool CreateVKInstance();
@@ -68,6 +69,8 @@ private :
 	bool SetupGraphicsPipeline();
 
 	bool CreateFrameBuffers();
+
+	bool CreateCommandBuffer();
 
 public:
 	VkShaderModule LoadShader(const std::vector<char>& p_byteCode); //TODO : put LoadShader() in a Ressource manager or smth
