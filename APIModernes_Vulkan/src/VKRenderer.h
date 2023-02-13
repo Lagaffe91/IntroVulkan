@@ -42,7 +42,8 @@ private :
 
 	std::vector<VkFramebuffer> mFrameBuffers;
 
-	VkCommandPool mCommandPool;
+	VkCommandPool	mCommandPool;
+	VkCommandBuffer mCommandBuffer;
 
 private :
 	bool CreateVKInstance();

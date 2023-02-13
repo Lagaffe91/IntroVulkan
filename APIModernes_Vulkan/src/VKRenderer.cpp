@@ -627,9 +627,9 @@ bool VKRenderer::CreateCommandBuffer()
 
 	VkCommandPoolCreateInfo commandPoolCreateInfo{};
 
-	commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-	commandPoolCreateInfo.queueFamilyIndex = this->mPhysicalDevice.supportedQueues.graphicsFamily;
+	commandPoolCreateInfo.sType				= VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	commandPoolCreateInfo.flags				= VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+	commandPoolCreateInfo.queueFamilyIndex	= this->mPhysicalDevice.supportedQueues.graphicsFamily;
 
 	bool result = vkCreateCommandPool(this->mLogicalDevice, &commandPoolCreateInfo, nullptr, &this->mCommandPool) == VK_SUCCESS;
 
@@ -637,7 +637,14 @@ bool VKRenderer::CreateCommandBuffer()
 	//Command buffer
 	//
 
-	//result &= vkAllocateCommandBuffers();
+	VkCommandBufferAllocateInfo commandBufferAllocateInfo{};
+
+	commandBufferAllocateInfo.sType					= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	commandBufferAllocateInfo.commandPool			= this->mCommandPool;
+	commandBufferAllocateInfo.commandBufferCount	= 1;
+	commandBufferAllocateInfo.level					= VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+
+	result &= vkAllocateCommandBuffers(this->mLogicalDevice, &commandBufferAllocateInfo, &this->mCommandBuffer) == VK_SUCCESS;
 
 	return result;
 }
@@ -678,6 +685,7 @@ bool VKRenderer::Init(Window* p_window)
 	result &= this->CreateSwapChain();
 	result &= this->SetupGraphicsPipeline();
 	result &= this->CreateFrameBuffers();
+	result &= this->CreateCommandBuffer();
 
 	return result;
 }
@@ -685,6 +693,7 @@ bool VKRenderer::Init(Window* p_window)
 void VKRenderer::Release()
 {
 	//Command buffer
+	vkFreeCommandBuffers(this->mLogicalDevice, this->mCommandPool, 1, &this->mCommandBuffer);
 	vkDestroyCommandPool(this->mLogicalDevice, this->mCommandPool, nullptr);
 
 	//Framebuffers
