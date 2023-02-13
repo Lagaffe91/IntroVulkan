@@ -372,16 +372,15 @@ bool VKRenderer::CreateSwapChain()
 		
 		vkGetSwapchainImagesKHR(this->mLogicalDevice, createdSwapChain.vkSwapChain, &imageCount, nullptr);
 		
-		createdSwapChain.images		= std::vector<VkImage>(imageCount);
-		createdSwapChain.imageViews = std::vector<VkImageView>(imageCount);
+		createdSwapChain.images.resize(imageCount);
+		createdSwapChain.imageViews.resize(imageCount);
 		
 		vkGetSwapchainImagesKHR(this->mLogicalDevice, createdSwapChain.vkSwapChain, &imageCount, createdSwapChain.images.data());
 
 		createdSwapChain.extent = imageExtent;
 		createdSwapChain.imageFormat = imageFormat.format;
 
-		int i = 0;
-		for (VkImageView& imageView : this->mSwapChain.imageViews)
+		for (int i = 0; i < imageCount; i++)
 		{
 			VkImageViewCreateInfo imageViewCreateInfo{};
 
@@ -396,14 +395,12 @@ bool VKRenderer::CreateSwapChain()
 			imageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 
 			imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
-			imageViewCreateInfo.subresourceRange.levelCount = 1;
+			imageViewCreateInfo.subresourceRange.baseMipLevel	= 0;
+			imageViewCreateInfo.subresourceRange.levelCount		= 1;
 			imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-			imageViewCreateInfo.subresourceRange.layerCount = 1;
+			imageViewCreateInfo.subresourceRange.layerCount		= 1;
 
-			vkCreateImageView(this->mLogicalDevice, &imageViewCreateInfo, nullptr, &imageView);
-
-			i++;
+			vkCreateImageView(this->mLogicalDevice, &imageViewCreateInfo, nullptr, &createdSwapChain.imageViews[i]);
 		}
 
 		this->mSwapChain = createdSwapChain;
@@ -490,8 +487,8 @@ bool VKRenderer::SetupGraphicsPipeline()
 	//Shaders
 	//
 
-	const std::vector<char> vertexByteCode		= ParseShaderFile("/shaders/triangle.vert.spv");
-	const std::vector<char> fragmentByteCode	= ParseShaderFile("/shaders/triangle.frag.spv");
+	std::vector<char> vertexByteCode	= ParseShaderFile("./shaders/triangle.vert.spv");
+	std::vector<char> fragmentByteCode	= ParseShaderFile("./shaders/triangle.frag.spv");
 
 	if(vertexByteCode.empty() || fragmentByteCode.empty())
 		return false;
@@ -511,7 +508,7 @@ bool VKRenderer::SetupGraphicsPipeline()
 
 	fragShaderStageInfo.sType	= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	fragShaderStageInfo.stage	= VK_SHADER_STAGE_FRAGMENT_BIT;
-	fragShaderStageInfo.module	= this->mVertexShader;
+	fragShaderStageInfo.module	= this->mFragmentShader;
 	fragShaderStageInfo.pName	= "main";
 		
 	this->mShaderStages = { vertShaderStageInfo, fragShaderStageInfo };
@@ -560,6 +557,7 @@ bool VKRenderer::SetupGraphicsPipeline()
 
 	renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	renderPassCreateInfo.attachmentCount = 1;
+	renderPassCreateInfo.pAttachments = &colorAttachment;
 	renderPassCreateInfo.subpassCount = 1;
 	renderPassCreateInfo.pSubpasses = &subpassDescription;
 
@@ -592,6 +590,33 @@ bool VKRenderer::SetupGraphicsPipeline()
 	graphicsPipelineCreateInfo.basePipelineIndex = -1;
 
 	return vkCreateGraphicsPipelines(this->mLogicalDevice, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, nullptr, &this->mGraphicsPipeline) == VK_SUCCESS;
+}
+
+bool VKRenderer::CreateFrameBuffers()
+{
+	this->mFrameBuffers.resize(this->mSwapChain.imageViews.size());
+
+	for (int i = 0; i < mFrameBuffers.capacity(); i++)
+	{
+		VkImageView attachments[] = {
+			this->mSwapChain.imageViews[i]
+		};
+
+
+		VkFramebufferCreateInfo framebufferCreateInfo{};
+
+		framebufferCreateInfo.sType			= VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferCreateInfo.height		= this->mSwapChain.extent.height;
+		framebufferCreateInfo.width			= this->mSwapChain.extent.width;
+		framebufferCreateInfo.renderPass	= this->mRenderPass;
+		framebufferCreateInfo.layers		= 1;
+		framebufferCreateInfo.attachmentCount = 1;
+		framebufferCreateInfo.pAttachments  = attachments;
+
+		vkCreateFramebuffer(this->mLogicalDevice , &framebufferCreateInfo, nullptr, &this->mFrameBuffers[i]) == VK_SUCCESS;
+	}
+
+	return true;
 }
 
 VkShaderModule VKRenderer::LoadShader(const std::vector<char>& p_byteCode)
@@ -628,12 +653,17 @@ bool VKRenderer::Init(Window* p_window)
 	result &= this->CreateLogicalDevice();
 	result &= this->CreateSwapChain();
 	result &= this->SetupGraphicsPipeline();
+	result &= this->CreateFrameBuffers();
 
 	return result;
 }
 
 void VKRenderer::Release()
 {
+	//Framebuffers
+	for (VkFramebuffer frameBuffer : this->mFrameBuffers)
+		vkDestroyFramebuffer(this->mLogicalDevice, frameBuffer, nullptr);
+
 	//Pipeline
 	vkDestroyPipeline(this->mLogicalDevice, this->mGraphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(this->mLogicalDevice, this->mPipelineLayout, nullptr);

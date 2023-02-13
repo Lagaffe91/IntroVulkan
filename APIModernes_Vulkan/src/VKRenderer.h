@@ -32,14 +32,16 @@ private :
 	VkShaderModule mFragmentShader;
 
 	//TODO : Put render pipeline objects in a sturct !
-
-
-
 	std::vector<VkPipelineShaderStageCreateInfo> mShaderStages;
 
 	VkPipelineLayout mPipelineLayout;
 	VkRenderPass mRenderPass;
 	VkPipeline mGraphicsPipeline;
+
+	//
+
+	std::vector<VkFramebuffer> mFrameBuffers;
+
 
 private :
 	bool CreateVKInstance();
@@ -65,7 +67,11 @@ private :
 	
 	bool SetupGraphicsPipeline();
 
-	VkShaderModule LoadShader(const std::vector<char>& p_byteCode); //should be public ? (ressource manager anyway)
+	bool CreateFrameBuffers();
+
+public:
+	VkShaderModule LoadShader(const std::vector<char>& p_byteCode); //TODO : put LoadShader() in a Ressource manager or smth
+
 
 //
 //IRenderer implementation
