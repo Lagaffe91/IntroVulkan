@@ -22,6 +22,7 @@ private :
 	VkSurfaceKHR	mRenderingSurface;
 
 	VkQueue			mPresentQueue;
+	VkQueue			mGraphicsQueue;
 
 	PhysicalDeviceDescription	mPhysicalDevice;
 	SwapChainDescription		mSwapChain;
@@ -33,6 +34,7 @@ private :
 	//TODO : Put render pipeline objects in a sturct !
 	VkPipelineLayout mPipelineLayout;
 	VkRenderPass mRenderPass;
+	VkPipeline mGraphicsPipeline;
 
 private :
 	bool CreateVKInstance();

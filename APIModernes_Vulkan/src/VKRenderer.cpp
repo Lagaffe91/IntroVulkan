@@ -233,14 +233,14 @@ bool VKRenderer::CreateLogicalDevice()
 {
 	std::vector<VkDeviceQueueCreateInfo> deviceQueueCreateInfos;
 	
-	std::vector<int32_t> queuesIdx;
-	
-	queuesIdx.push_back(this->mPhysicalDevice.supportedQueues.presentFamily);
-	queuesIdx.push_back(this->mPhysicalDevice.supportedQueues.graphicsFamily);
-	
+	std::set<uint32_t> queuesIdx = {
+		this->mPhysicalDevice.supportedQueues.presentFamily,
+		this->mPhysicalDevice.supportedQueues.graphicsFamily
+	};
+
 	constexpr float queuePriorities = 1.0f;
 
-	for(int32_t queue : queuesIdx)
+	for (uint32_t queue : queuesIdx)
 	{ 
 		VkDeviceQueueCreateInfo deviceQueueCreateInfo{};
 
@@ -257,7 +257,7 @@ bool VKRenderer::CreateLogicalDevice()
 	deviceCreateInfo.sType						= VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 	deviceCreateInfo.pEnabledFeatures			= &this->mPhysicalDevice.deviceFeatures;
 	deviceCreateInfo.pQueueCreateInfos			= deviceQueueCreateInfos.data();
-	deviceCreateInfo.queueCreateInfoCount		= (uint32_t)deviceQueueCreateInfos.size()-1;
+	deviceCreateInfo.queueCreateInfoCount		= (uint32_t)deviceQueueCreateInfos.size();
 	deviceCreateInfo.enabledLayerCount			= 0;
 	deviceCreateInfo.ppEnabledExtensionNames	= this->mExtensions.data();
 	deviceCreateInfo.enabledExtensionCount		= (uint32_t)this->mExtensions.size();
@@ -267,7 +267,12 @@ bool VKRenderer::CreateLogicalDevice()
 	deviceCreateInfo.enabledLayerCount	 = (uint32_t)this->mValidationLayers.size();
 #endif // _DEBUG
 
-	return vkCreateDevice(this->mPhysicalDevice.physicalDevice, &deviceCreateInfo, nullptr, &this->mLogicalDevice) == VK_SUCCESS;
+	bool result = vkCreateDevice(this->mPhysicalDevice.physicalDevice, &deviceCreateInfo, nullptr, &this->mLogicalDevice) == VK_SUCCESS;
+		
+	vkGetDeviceQueue(this->mLogicalDevice, this->mPhysicalDevice.supportedQueues.graphicsFamily, 0, &this->mGraphicsQueue);
+	vkGetDeviceQueue(this->mLogicalDevice, this->mPhysicalDevice.supportedQueues.presentFamily , 0, &this->mPresentQueue);
+
+	return result;
 }
 
 //Inline really matter ? feel like compiler will do it anyway
@@ -496,9 +501,29 @@ bool VKRenderer::SetupGraphicsPipeline()
 	//Graphics pipeline object
 	//
 
+	VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo{};
 
+	graphicsPipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	graphicsPipelineCreateInfo.layout = this->mPipelineLayout;
+	graphicsPipelineCreateInfo.renderPass = this->mRenderPass;
+	graphicsPipelineCreateInfo.subpass = 0;
+	graphicsPipelineCreateInfo.stageCount = 2;
+	//graphicsPipelineCreateInfo.pStages = this->mShaderStages;
 
-	return true;
+	/*
+	graphicsPipelineCreateInfo.pVertexInputState = &vertexInputInfo;
+	graphicsPipelineCreateInfo.pInputAssemblyState = &inputAssembly;
+	graphicsPipelineCreateInfo.pViewportState = &viewportState;
+	graphicsPipelineCreateInfo.pRasterizationState = &rasterizer;
+	graphicsPipelineCreateInfo.pMultisampleState = &multisampling;
+	graphicsPipelineCreateInfo.pColorBlendState = &colorBlending;
+	graphicsPipelineCreateInfo.pDynamicState = &dynamicState;*/
+
+	graphicsPipelineCreateInfo.pDepthStencilState = nullptr;
+	graphicsPipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
+	graphicsPipelineCreateInfo.basePipelineIndex = -1;
+
+	return vkCreateGraphicsPipelines(this->mLogicalDevice, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, nullptr, &this->mGraphicsPipeline) == VK_SUCCESS;
 }
 
 VkShaderModule VKRenderer::LoadShader(const std::vector<char>& p_byteCode)
@@ -535,8 +560,6 @@ bool VKRenderer::Init(Window* p_window)
 	result &= this->CreateLogicalDevice();
 	result &= this->CreateSwapChain();
 	result &= this->SetupGraphicsPipeline();
-	
-	vkGetDeviceQueue(mLogicalDevice, this->mPhysicalDevice.supportedQueues.presentFamily, 0, &mPresentQueue); //Does not return VK_RESULT //Move this to a struct ?
 
 	return result;
 }
@@ -544,6 +567,7 @@ bool VKRenderer::Init(Window* p_window)
 void VKRenderer::Release()
 {
 	//Pipeline
+	vkDestroyPipeline(this->mLogicalDevice, this->mGraphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(this->mLogicalDevice, this->mPipelineLayout, nullptr);
 	vkDestroyRenderPass(this->mLogicalDevice, this->mRenderPass, nullptr);
 
