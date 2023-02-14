@@ -429,12 +429,16 @@ bool VKRenderer::SetupGraphicsPipeline()
 	pipelineDynamicStateCreateInfo.dynamicStateCount	= static_cast<uint32_t>(dynamicStates.size());
 	pipelineDynamicStateCreateInfo.pDynamicStates		= dynamicStates.data();
 
+	auto bindingDescription = VKRenderer::GetBindingDescription();
+	auto attributeDescriptions = VKRenderer::GetAttributeDescriptions();
 
 	VkPipelineVertexInputStateCreateInfo pipelineVertexInputStateCreateInfo{};
 
-	pipelineVertexInputStateCreateInfo.sType						 = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	pipelineVertexInputStateCreateInfo.vertexBindingDescriptionCount = 0;
-
+	pipelineVertexInputStateCreateInfo.sType							= VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	pipelineVertexInputStateCreateInfo.vertexBindingDescriptionCount	= 1;
+	pipelineVertexInputStateCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+	pipelineVertexInputStateCreateInfo.pVertexBindingDescriptions		= &bindingDescription;
+	pipelineVertexInputStateCreateInfo.pVertexAttributeDescriptions		= attributeDescriptions.data();
 
 	VkPipelineInputAssemblyStateCreateInfo pipelineInputAssemblyStateCreateInfo{};
 

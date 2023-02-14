@@ -3,7 +3,7 @@
 #include "vulkan/vulkan.h"
 
 #include <vector>
-#include <string>
+#include <array>
 
 #include "Utils.h"
 
@@ -79,7 +79,7 @@ private :
 public:
 	VkShaderModule LoadShader(const std::vector<char>& p_byteCode); //TODO : put LoadShader() in a Ressource manager or smth
 
-	static VkVertexInputBindingDescription getBindingDescription()
+	static VkVertexInputBindingDescription GetBindingDescription()
 	{	
 		VkVertexInputBindingDescription vertexInputBindingDescription{};
 
@@ -88,6 +88,24 @@ public:
 		vertexInputBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 		return vertexInputBindingDescription;
+	}
+
+	static std::array<VkVertexInputAttributeDescription, 2> GetAttributeDescriptions() 
+	{
+		std::array<VkVertexInputAttributeDescription, 2> vertexInputAttributeDescription{};
+
+		vertexInputAttributeDescription[0].binding = 0;
+		vertexInputAttributeDescription[0].location = 0;
+		vertexInputAttributeDescription[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+		vertexInputAttributeDescription[0].offset = offsetof(Vertex, Vertex::pos);
+
+
+		vertexInputAttributeDescription[1].binding = 0;
+		vertexInputAttributeDescription[1].location = 1;
+		vertexInputAttributeDescription[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+		vertexInputAttributeDescription[1].offset = offsetof(Vertex, Vertex::color);
+
+		return vertexInputAttributeDescription;
 	}
 
 //
