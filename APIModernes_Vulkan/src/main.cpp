@@ -3,6 +3,7 @@
 #include "Utils.h"
 
 //TODO : VkRenderer : Remove every member function that does not acces members outside the class !
+//TODO : VkRenderer : Window resizeing
 
 int main()
 {

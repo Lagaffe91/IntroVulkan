@@ -79,6 +79,16 @@ private :
 public:
 	VkShaderModule LoadShader(const std::vector<char>& p_byteCode); //TODO : put LoadShader() in a Ressource manager or smth
 
+	static VkVertexInputBindingDescription getBindingDescription()
+	{	
+		VkVertexInputBindingDescription vertexInputBindingDescription{};
+
+		vertexInputBindingDescription.binding	= 0;
+		vertexInputBindingDescription.stride	= sizeof(Vertex);
+		vertexInputBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+		return vertexInputBindingDescription;
+	}
 
 //
 //IRenderer implementation

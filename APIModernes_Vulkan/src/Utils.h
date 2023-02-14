@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <vector>
 
+#include "Maths.h"
+
 #include "vulkan/vulkan.h"
 
 #pragma region App Parameters
@@ -23,8 +25,13 @@
 
 #pragma endregion App Parameters
 
+struct Vertex
+{
+	Vector3 pos;
+	Vector3 color;
+};
 
-//TODO : Add VKUtils namespace (in case multiple renderers)
+//TODO : Add VKUtils namespace because why not kekew
 #pragma region Utils Vulkan Renderer
 struct DeviceSupportedQueues
 {
