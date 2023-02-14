@@ -511,7 +511,7 @@ bool VKRenderer::SetupGraphicsPipeline()
 	fragShaderStageInfo.module	= this->mFragmentShader;
 	fragShaderStageInfo.pName	= "main";
 		
-	this->mShaderStages = { vertShaderStageInfo, fragShaderStageInfo };
+	this->mGraphicsPipeline.mShaderStages = { vertShaderStageInfo, fragShaderStageInfo };
 
 	//
 	//Pipeline layout
@@ -521,7 +521,7 @@ bool VKRenderer::SetupGraphicsPipeline()
 
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 
-	if (vkCreatePipelineLayout(this->mLogicalDevice, &pipelineLayoutInfo, nullptr, &this->mPipelineLayout) != VK_SUCCESS)
+	if (vkCreatePipelineLayout(this->mLogicalDevice, &pipelineLayoutInfo, nullptr, &this->mGraphicsPipeline.vkPipelineLayout) != VK_SUCCESS)
 		return false;
 
 	//
@@ -574,7 +574,7 @@ bool VKRenderer::SetupGraphicsPipeline()
 	renderPassCreateInfo.pDependencies = &subpassDependency;
 
 
-	if (vkCreateRenderPass(this->mLogicalDevice, &renderPassCreateInfo, nullptr, &this->mRenderPass) != VK_SUCCESS)
+	if (vkCreateRenderPass(this->mLogicalDevice, &renderPassCreateInfo, nullptr, &this->mGraphicsPipeline.vkRenderPass) != VK_SUCCESS)
 		return false;
 
 	//
@@ -584,11 +584,11 @@ bool VKRenderer::SetupGraphicsPipeline()
 	VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo{};
 
 	graphicsPipelineCreateInfo.sType		= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	graphicsPipelineCreateInfo.layout		= this->mPipelineLayout;
-	graphicsPipelineCreateInfo.renderPass	= this->mRenderPass;
+	graphicsPipelineCreateInfo.layout		= this->mGraphicsPipeline.vkPipelineLayout;
+	graphicsPipelineCreateInfo.renderPass	= this->mGraphicsPipeline.vkRenderPass;
 	graphicsPipelineCreateInfo.subpass		= 0;
 	graphicsPipelineCreateInfo.stageCount	= 2;
-	graphicsPipelineCreateInfo.pStages		= this->mShaderStages.data();
+	graphicsPipelineCreateInfo.pStages		= this->mGraphicsPipeline.mShaderStages.data();
 
 	graphicsPipelineCreateInfo.pDynamicState		= &pipelineDynamicStateCreateInfo;
 	graphicsPipelineCreateInfo.pVertexInputState	= &pipelineVertexInputStateCreateInfo;
@@ -602,14 +602,14 @@ bool VKRenderer::SetupGraphicsPipeline()
 	graphicsPipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 	graphicsPipelineCreateInfo.basePipelineIndex = -1;
 
-	return vkCreateGraphicsPipelines(this->mLogicalDevice, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, nullptr, &this->mGraphicsPipeline) == VK_SUCCESS;
+	return vkCreateGraphicsPipelines(this->mLogicalDevice, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, nullptr, &this->mGraphicsPipeline.vkPipeline) == VK_SUCCESS;
 }
 
 bool VKRenderer::CreateFrameBuffers()
 {
-	this->mFrameBuffers.resize(this->mSwapChain.imageViews.size());
+	this->mSwapChain.frameBuffers.resize(this->mSwapChain.imageViews.size());
 
-	for (int i = 0; i < mFrameBuffers.capacity(); i++)
+	for (int i = 0; i < this->mSwapChain.frameBuffers.capacity(); i++)
 	{
 		VkImageView attachments[] = {
 			this->mSwapChain.imageViews[i]
@@ -618,15 +618,15 @@ bool VKRenderer::CreateFrameBuffers()
 
 		VkFramebufferCreateInfo framebufferCreateInfo{};
 
-		framebufferCreateInfo.sType			= VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferCreateInfo.height		= this->mSwapChain.extent.height;
-		framebufferCreateInfo.width			= this->mSwapChain.extent.width;
-		framebufferCreateInfo.renderPass	= this->mRenderPass;
-		framebufferCreateInfo.layers		= 1;
+		framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferCreateInfo.height = this->mSwapChain.extent.height;
+		framebufferCreateInfo.width = this->mSwapChain.extent.width;
+		framebufferCreateInfo.renderPass = this->mGraphicsPipeline.vkRenderPass;
+		framebufferCreateInfo.layers = 1;
 		framebufferCreateInfo.attachmentCount = 1;
-		framebufferCreateInfo.pAttachments  = attachments;
+		framebufferCreateInfo.pAttachments = attachments;
 
-		vkCreateFramebuffer(this->mLogicalDevice , &framebufferCreateInfo, nullptr, &this->mFrameBuffers[i]) == VK_SUCCESS;
+		vkCreateFramebuffer(this->mLogicalDevice, &framebufferCreateInfo, nullptr, &this->mSwapChain.frameBuffers[i]) == VK_SUCCESS;
 	}
 
 	return true;
@@ -675,8 +675,8 @@ void VKRenderer::RecordCommandBuffer(VkCommandBuffer& p_commandBuffer, uint32_t 
 	VkRenderPassBeginInfo renderPassBeginInfo{};
 
 	renderPassBeginInfo.sType				= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassBeginInfo.renderPass			= this->mRenderPass;
-	renderPassBeginInfo.framebuffer			= this->mFrameBuffers[p_imageIndex];
+	renderPassBeginInfo.renderPass			= this->mGraphicsPipeline.vkRenderPass;
+	renderPassBeginInfo.framebuffer			= this->mSwapChain.frameBuffers[p_imageIndex];
 	renderPassBeginInfo.renderArea.extent	= this->mSwapChain.extent;
 	renderPassBeginInfo.renderArea.offset	= { 0,0 };
 
@@ -686,7 +686,7 @@ void VKRenderer::RecordCommandBuffer(VkCommandBuffer& p_commandBuffer, uint32_t 
 
 	vkCmdBeginRenderPass(p_commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-	vkCmdBindPipeline(p_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->mGraphicsPipeline);
+	vkCmdBindPipeline(p_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->mGraphicsPipeline.vkPipeline);
 
 	VkViewport viewport{};
 	viewport.x = 0.0f;
@@ -782,13 +782,13 @@ void VKRenderer::Release()
 	vkDestroyCommandPool(this->mLogicalDevice, this->mCommandPool, nullptr);
 
 	//Framebuffers
-	for (VkFramebuffer frameBuffer : this->mFrameBuffers)
+	for (VkFramebuffer frameBuffer : this->mSwapChain.frameBuffers)
 		vkDestroyFramebuffer(this->mLogicalDevice, frameBuffer, nullptr);
 
 	//Pipeline
-	vkDestroyPipeline(this->mLogicalDevice, this->mGraphicsPipeline, nullptr);
-	vkDestroyPipelineLayout(this->mLogicalDevice, this->mPipelineLayout, nullptr);
-	vkDestroyRenderPass(this->mLogicalDevice, this->mRenderPass, nullptr);
+	vkDestroyPipeline(this->mLogicalDevice, this->mGraphicsPipeline.vkPipeline, nullptr);
+	vkDestroyPipelineLayout(this->mLogicalDevice, this->mGraphicsPipeline.vkPipelineLayout, nullptr);
+	vkDestroyRenderPass(this->mLogicalDevice, this->mGraphicsPipeline.vkRenderPass, nullptr);
 
 	//shader modules
 	vkDestroyShaderModule(this->mLogicalDevice, this->mFragmentShader, nullptr);

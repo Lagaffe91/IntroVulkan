@@ -67,6 +67,17 @@ struct SwapChainDescription
 
 	std::vector<VkImage>		images;
 	std::vector<VkImageView>	imageViews;
+
+	std::vector<VkFramebuffer>	frameBuffers;
+};
+
+struct GraphicPipelineDescription
+{
+	std::vector<VkPipelineShaderStageCreateInfo> mShaderStages;
+
+	VkPipelineLayout	vkPipelineLayout;
+	VkRenderPass		vkRenderPass;
+	VkPipeline			vkPipeline;
 };
 #pragma endregion Vulkan Renderer
 
