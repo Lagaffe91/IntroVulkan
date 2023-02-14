@@ -31,16 +31,18 @@ private :
 	VkShaderModule mVertexShader;
 	VkShaderModule mFragmentShader;
 
-	//Same
+	//TODO : Put this in a dedicated struct
 	VkCommandPool	mCommandPool;
-	VkCommandBuffer mCommandBuffer;
+	std::vector<VkCommandBuffer> mCommandBuffer;
 	//------
 
-	//
-	VkSemaphore mRenderingSemaphore;
-	VkSemaphore mImageAviableSemaphore;
-	VkFence		mPresentFence;
+	//Same
+	std::vector<VkSemaphore>	mRenderingSemaphore;
+	std::vector<VkSemaphore>	mImageAviableSemaphore;
+	std::vector<VkFence>		mPresentFence;
 	//------
+
+	uint32_t mCurrentFrame = 0;
 
 private :
 	bool CreateVKInstance();

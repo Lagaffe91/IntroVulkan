@@ -647,17 +647,19 @@ bool VKRenderer::CreateCommandBuffer()
 	bool result = vkCreateCommandPool(this->mLogicalDevice, &commandPoolCreateInfo, nullptr, &this->mCommandPool) == VK_SUCCESS;
 
 	//
-	//Command buffer
+	//Command buffers
 	//
+
+	mCommandBuffer.resize(this->mGraphicsPipeline.MAX_CONCURENT_FRAMES);
 
 	VkCommandBufferAllocateInfo commandBufferAllocateInfo{};
 
 	commandBufferAllocateInfo.sType					= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	commandBufferAllocateInfo.commandPool			= this->mCommandPool;
-	commandBufferAllocateInfo.commandBufferCount	= 1;
+	commandBufferAllocateInfo.commandBufferCount	= mCommandBuffer.size();
 	commandBufferAllocateInfo.level					= VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 
-	result &= vkAllocateCommandBuffers(this->mLogicalDevice, &commandBufferAllocateInfo, &this->mCommandBuffer) == VK_SUCCESS;
+	result &= vkAllocateCommandBuffers(this->mLogicalDevice, &commandBufferAllocateInfo, this->mCommandBuffer.data()) == VK_SUCCESS;
 
 	return result;
 }
@@ -730,19 +732,27 @@ VkShaderModule VKRenderer::LoadShader(const std::vector<char>& p_byteCode)
 
 bool VKRenderer::CreateSyncObjects()
 {
+	mRenderingSemaphore.resize(this->mGraphicsPipeline.MAX_CONCURENT_FRAMES);
+	mImageAviableSemaphore.resize(this->mGraphicsPipeline.MAX_CONCURENT_FRAMES);
+	mPresentFence.resize(this->mGraphicsPipeline.MAX_CONCURENT_FRAMES);
+
 	VkSemaphoreCreateInfo semaphoreCreateInfo{};
+
 	semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
 	VkFenceCreateInfo fenceCreateInfo{};
+
 	fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
+	for(int i = 0; i < this->mGraphicsPipeline.MAX_CONCURENT_FRAMES; i++)
+	{ 
+		vkCreateSemaphore(this->mLogicalDevice, &semaphoreCreateInfo, nullptr, &this->mImageAviableSemaphore[i]);
+		vkCreateSemaphore(this->mLogicalDevice, &semaphoreCreateInfo, nullptr, &this->mRenderingSemaphore[i]);
+		vkCreateFence(this->mLogicalDevice, &fenceCreateInfo, nullptr, &this->mPresentFence[i]);
+	}
 
-	bool result = (vkCreateSemaphore(this->mLogicalDevice, &semaphoreCreateInfo, nullptr, &this->mImageAviableSemaphore) == VK_SUCCESS &&
-			vkCreateSemaphore(this->mLogicalDevice, &semaphoreCreateInfo, nullptr, &this->mRenderingSemaphore) == VK_SUCCESS &&
-			vkCreateFence(this->mLogicalDevice, &fenceCreateInfo, nullptr, &this->mPresentFence) == VK_SUCCESS);
-
-	return result;
+	return true;
 }
 
 //
@@ -773,12 +783,15 @@ void VKRenderer::Release()
 	vkDeviceWaitIdle(this->mLogicalDevice); //Smol security
 
 	//Sync objects
-	vkDestroySemaphore(this->mLogicalDevice, this->mImageAviableSemaphore, nullptr);
-	vkDestroySemaphore(this->mLogicalDevice, this->mRenderingSemaphore, nullptr);
-	vkDestroyFence(this->mLogicalDevice, this->mPresentFence, nullptr);
+	for (int i = 0; i < this->mGraphicsPipeline.MAX_CONCURENT_FRAMES; i++)
+	{ 
+		vkDestroySemaphore(this->mLogicalDevice, this->mImageAviableSemaphore[i], nullptr);
+		vkDestroySemaphore(this->mLogicalDevice, this->mRenderingSemaphore[i], nullptr);
+		vkDestroyFence(this->mLogicalDevice, this->mPresentFence[i], nullptr);
+	}
 
 	//Command buffer
-	vkFreeCommandBuffers(this->mLogicalDevice, this->mCommandPool, 1, &this->mCommandBuffer);
+	vkFreeCommandBuffers(this->mLogicalDevice, this->mCommandPool, this->mGraphicsPipeline.MAX_CONCURENT_FRAMES, this->mCommandBuffer.data());
 	vkDestroyCommandPool(this->mLogicalDevice, this->mCommandPool, nullptr);
 
 	//Framebuffers
@@ -817,25 +830,25 @@ void VKRenderer::Render()
 	//Frame prep
 	//
 
-	vkWaitForFences(this->mLogicalDevice, 1, &this->mPresentFence, VK_TRUE, UINT64_MAX);
-	vkResetFences(this->mLogicalDevice, 1, &this->mPresentFence);
+	vkWaitForFences(this->mLogicalDevice, 1, &this->mPresentFence[this->mCurrentFrame], VK_TRUE, UINT64_MAX);
+	vkResetFences(this->mLogicalDevice, 1, &this->mPresentFence[this->mCurrentFrame]);
 
 	uint32_t imageIndex;
-	vkAcquireNextImageKHR(this->mLogicalDevice, this->mSwapChain.vkSwapChain, UINT64_MAX, this->mImageAviableSemaphore, VK_NULL_HANDLE, &imageIndex);
+	vkAcquireNextImageKHR(this->mLogicalDevice, this->mSwapChain.vkSwapChain, UINT64_MAX, this->mImageAviableSemaphore[this->mCurrentFrame], VK_NULL_HANDLE, &imageIndex);
 
-	vkResetCommandBuffer(this->mCommandBuffer, 0);
+	vkResetCommandBuffer(this->mCommandBuffer[this->mCurrentFrame], 0);
 	
 	//
 	//Command Buffer
 	//
 
-	this->RecordCommandBuffer(this->mCommandBuffer, imageIndex);
+	this->RecordCommandBuffer(this->mCommandBuffer[this->mCurrentFrame], imageIndex);
 
 	VkSubmitInfo submitInfo{};
 
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-	VkSemaphore waitSemaphores[] = { this->mImageAviableSemaphore };
+	VkSemaphore waitSemaphores[] = { this->mImageAviableSemaphore[this->mCurrentFrame] };
 	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
 	submitInfo.waitSemaphoreCount = 1;
@@ -843,14 +856,14 @@ void VKRenderer::Render()
 	submitInfo.pWaitDstStageMask = waitStages;
 
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &this->mCommandBuffer;
+	submitInfo.pCommandBuffers = &this->mCommandBuffer[this->mCurrentFrame];
 
-	VkSemaphore signalSemaphores[] = { this->mRenderingSemaphore };
+	VkSemaphore signalSemaphores[] = { this->mRenderingSemaphore[this->mCurrentFrame] };
 
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = signalSemaphores;
 
-	vkQueueSubmit(this->mGraphicsQueue, 1, &submitInfo, this->mPresentFence);
+	vkQueueSubmit(this->mGraphicsQueue, 1, &submitInfo, this->mPresentFence[this->mCurrentFrame]);
 	
 	//
 	//Present stuff
@@ -869,4 +882,6 @@ void VKRenderer::Render()
 	presentInfo.pImageIndices = &imageIndex;
 
 	vkQueuePresentKHR(this->mPresentQueue, &presentInfo);
+
+	this->mCurrentFrame = (this->mCurrentFrame + 1) % this->mGraphicsPipeline.MAX_CONCURENT_FRAMES;
 }

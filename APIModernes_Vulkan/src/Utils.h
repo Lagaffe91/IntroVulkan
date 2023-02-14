@@ -78,6 +78,8 @@ struct GraphicPipelineDescription
 	VkPipelineLayout	vkPipelineLayout;
 	VkRenderPass		vkRenderPass;
 	VkPipeline			vkPipeline;
+
+	const int MAX_CONCURENT_FRAMES = 2; //Would like this parametrable !
 };
 #pragma endregion Vulkan Renderer
 
