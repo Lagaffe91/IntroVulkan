@@ -735,10 +735,14 @@ bool VKRenderer::CreateSyncObjects()
 
 	VkFenceCreateInfo fenceCreateInfo{};
 	fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-	return (vkCreateSemaphore(this->mLogicalDevice, &semaphoreCreateInfo, nullptr, &this->mImageAviableSemaphore) == VK_SUCCESS &&
+
+	bool result = (vkCreateSemaphore(this->mLogicalDevice, &semaphoreCreateInfo, nullptr, &this->mImageAviableSemaphore) == VK_SUCCESS &&
 			vkCreateSemaphore(this->mLogicalDevice, &semaphoreCreateInfo, nullptr, &this->mRenderingSemaphore) == VK_SUCCESS &&
 			vkCreateFence(this->mLogicalDevice, &fenceCreateInfo, nullptr, &this->mPresentFence) == VK_SUCCESS);
+
+	return result;
 }
 
 //
@@ -809,13 +813,21 @@ void VKRenderer::Release()
 
 void VKRenderer::Render()
 {
+	//
+	//Frame prep
+	//
+
 	vkWaitForFences(this->mLogicalDevice, 1, &this->mPresentFence, VK_TRUE, UINT64_MAX);
 	vkResetFences(this->mLogicalDevice, 1, &this->mPresentFence);
-	
+
 	uint32_t imageIndex;
 	vkAcquireNextImageKHR(this->mLogicalDevice, this->mSwapChain.vkSwapChain, UINT64_MAX, this->mImageAviableSemaphore, VK_NULL_HANDLE, &imageIndex);
 
 	vkResetCommandBuffer(this->mCommandBuffer, 0);
+	
+	//
+	//Command Buffer
+	//
 
 	this->RecordCommandBuffer(this->mCommandBuffer, imageIndex);
 
@@ -845,14 +857,16 @@ void VKRenderer::Render()
 	//
 
 	VkPresentInfoKHR presentInfo{};
+
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentInfo.waitSemaphoreCount = 1;
 	presentInfo.pWaitSemaphores = signalSemaphores;
+
 	VkSwapchainKHR swapChains[] = { this->mSwapChain.vkSwapChain };
+
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = swapChains;
 	presentInfo.pImageIndices = &imageIndex;
 
 	vkQueuePresentKHR(this->mPresentQueue, &presentInfo);
-
 }
