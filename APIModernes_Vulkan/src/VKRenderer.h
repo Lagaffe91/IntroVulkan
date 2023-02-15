@@ -12,6 +12,11 @@
 class VKRenderer : public IRenderer
 {
 private :
+	const std::vector<Vertex> mTriangleVertices = {
+	{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+	{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+	{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+	};
 
 	//Would like this to be parametrable ?
 	const std::vector<const char*> mValidationLayers = { "VK_LAYER_KHRONOS_validation" };
@@ -30,17 +35,21 @@ private :
 
 	VkShaderModule mVertexShader;
 	VkShaderModule mFragmentShader;
-
-	//TODO : Put this in a dedicated struct
+	
+	//------
 	VkCommandPool	mCommandPool;
 	std::vector<VkCommandBuffer> mCommandBuffer;
 	//------
 
-	//Same
+	//------ Sync objects
 	std::vector<VkSemaphore>	mRenderingSemaphore;
 	std::vector<VkSemaphore>	mImageAviableSemaphore;
 	std::vector<VkFence>		mPresentFence;
 	//------
+
+	VkBuffer mVertexBuffer;
+	VkDeviceMemory mVertexBufferMemory;
+
 
 	uint32_t mCurrentFrame = 0;
 
@@ -66,15 +75,20 @@ private :
 	//TODO : VKRenderer::CreateLogicalDevice : presentMode is hardcoded to FIFO (i dont want anything else, but could be cool to make it parametrable)
 	bool CreateSwapChain();
 	
+
 	bool SetupGraphicsPipeline();
 
 	bool CreateFrameBuffers();
 
 	bool CreateCommandBuffer();
 
+	bool CreateVertexBuffer();
+
 	void RecordCommandBuffer(VkCommandBuffer& commandBuffer, uint32_t imageIndex);
 
 	bool CreateSyncObjects();
+
+	uint32_t FindMemoryType(const uint32_t& p_filterBits, VkMemoryPropertyFlags& properties);
 
 public:
 	VkShaderModule LoadShader(const std::vector<char>& p_byteCode); //TODO : put LoadShader() in a Ressource manager or smth

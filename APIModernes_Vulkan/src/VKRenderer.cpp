@@ -619,7 +619,6 @@ bool VKRenderer::CreateFrameBuffers()
 			this->mSwapChain.imageViews[i]
 		};
 
-
 		VkFramebufferCreateInfo framebufferCreateInfo{};
 
 		framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -668,6 +667,47 @@ bool VKRenderer::CreateCommandBuffer()
 	return result;
 }
 
+uint32_t VKRenderer::FindMemoryType(const uint32_t& p_filterBits, VkMemoryPropertyFlags& properties)
+{
+	VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties;
+
+	vkGetPhysicalDeviceMemoryProperties(this->mPhysicalDevice.physicalDevice, &physicalDeviceMemoryProperties);
+
+	for (uint32_t i = 0; i < physicalDeviceMemoryProperties.memoryTypeCount; i++) 
+	{
+		if ((p_filterBits & (1 << i)) && (physicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
+			return i;
+	}
+}
+
+bool VKRenderer::CreateVertexBuffer()
+{
+	VkBufferCreateInfo bufferCreateInfo{};
+
+	bufferCreateInfo.sType			= VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferCreateInfo.size			= sizeof(this->mTriangleVertices[0]) * this->mTriangleVertices.size();
+	bufferCreateInfo.usage			= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	bufferCreateInfo.sharingMode	= VK_SHARING_MODE_EXCLUSIVE;
+	
+	bool result = vkCreateBuffer(this->mLogicalDevice, &bufferCreateInfo, nullptr, &this->mVertexBuffer) == VK_SUCCESS;
+
+	VkMemoryRequirements memoryRequirements;
+
+	vkGetBufferMemoryRequirements(this->mLogicalDevice, this->mVertexBuffer, &memoryRequirements);
+
+	VkMemoryAllocateInfo memoryAllocateInfo{};
+
+	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	memoryAllocateInfo.allocationSize = memoryRequirements.size;
+	memoryAllocateInfo.memoryTypeIndex = FindMemoryType(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+	result &= vkAllocateMemory(this->mLogicalDevice, &memoryAllocateInfo, nullptr, &this->mVertexBufferMemory) == VK_SUCCESS;
+	
+	if(result)
+		vkBindBufferMemory(this->mLogicalDevice, this->mVertexBuffer, this->mVertexBufferMemory, 0);
+
+	return result; 
+}
 
 
 void VKRenderer::RecordCommandBuffer(VkCommandBuffer& p_commandBuffer, uint32_t p_imageIndex)
@@ -777,6 +817,7 @@ bool VKRenderer::Init(Window* p_window)
 	result &= this->SetupGraphicsPipeline();
 	result &= this->CreateFrameBuffers();
 	result &= this->CreateCommandBuffer();
+	result &= this->CreateVertexBuffer();
 	result &= this->CreateSyncObjects();
 
 	return result;
@@ -793,6 +834,10 @@ void VKRenderer::Release()
 		vkDestroySemaphore(this->mLogicalDevice, this->mRenderingSemaphore[i], nullptr);
 		vkDestroyFence(this->mLogicalDevice, this->mPresentFence[i], nullptr);
 	}
+
+	//Vertex Buffer
+	vkDestroyBuffer(this->mLogicalDevice, this->mVertexBuffer, nullptr);
+	vkFreeMemory(this->mLogicalDevice, this->mVertexBufferMemory, nullptr);
 
 	//Command buffer
 	vkFreeCommandBuffers(this->mLogicalDevice, this->mCommandPool, this->mGraphicsPipeline.MAX_CONCURENT_FRAMES, this->mCommandBuffer.data());
