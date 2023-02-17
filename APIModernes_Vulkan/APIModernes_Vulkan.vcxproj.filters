@@ -22,6 +22,9 @@
     <Filter Include="Fichiers d%27en-tête\vk_video">
       <UniqueIdentifier>{5923e8b6-870b-4bfc-8217-c043b1772433}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Fichiers d%27en-tête\stb_image">
+      <UniqueIdentifier>{03dce603-caaf-4373-ad82-87220dcc1a84}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\GLFW\glfw3.h">
@@ -173,6 +176,9 @@
     </ClInclude>
     <ClInclude Include="src\Maths.h">
       <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
+    <ClInclude Include="include\stb_image\stb_image.h">
+      <Filter>Fichiers d%27en-tête\stb_image</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

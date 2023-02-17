@@ -177,6 +177,7 @@
   <ItemGroup>
     <ClInclude Include="include\GLFW\glfw3.h" />
     <ClInclude Include="include\GLFW\glfw3native.h" />
+    <ClInclude Include="include\stb_image\stb_image.h" />
     <ClInclude Include="include\vk_video\vulkan_video_codecs_common.h" />
     <ClInclude Include="include\vk_video\vulkan_video_codec_h264std.h" />
     <ClInclude Include="include\vk_video\vulkan_video_codec_h264std_decode.h" />
