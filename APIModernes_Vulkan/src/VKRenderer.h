@@ -53,10 +53,14 @@ private :
 
 
 	//------ TODO : this would fit in a Model class
-	VkBuffer mVertexBuffer;
-	VkDeviceMemory mVertexBufferMemory;
-	VkBuffer mIndexBuffer;
-	VkDeviceMemory mIndexBufferMemory;
+	VkBuffer		mVertexBuffer;
+	VkDeviceMemory	mVertexBufferMemory;
+	VkBuffer		mIndexBuffer;
+	VkDeviceMemory	mIndexBufferMemory;
+	VkImage			mTextureImage;
+	VkDeviceMemory	mTextureImageMemory;
+	VkImageView		mTextureImageView;
+	VkSampler		mTextureSampler;
 	//
 
 
@@ -83,13 +87,18 @@ private :
 
 	//TODO : VKRenderer::CreateLogicalDevice : presentMode is hardcoded to FIFO (i dont want anything else, but could be cool to make it parametrable)
 	bool CreateSwapChain();
-	
 
 	bool SetupGraphicsPipeline();
 
 	bool CreateFrameBuffers();
 
 	bool CreateCommandBuffer();
+
+	bool CreateTextureImage();
+
+	bool CreateTextureImageView(); 
+
+	bool CreateTextureSampler();
 
 	bool CreateVertexBuffer();
 
@@ -102,8 +111,16 @@ private :
 	uint32_t FindMemoryType(const uint32_t& p_filterBits, VkMemoryPropertyFlags properties);
 
 	bool CreateBuffer(VkDeviceSize p_size, VkBufferUsageFlags p_usage, VkMemoryPropertyFlags p_properties, VkBuffer& p_buffer, VkDeviceMemory& p_bufferMemory);
+	bool CreateImage(uint32_t p_width, uint32_t p_height, VkFormat p_format, VkImageTiling p_tiling, VkImageUsageFlags p_usage, VkMemoryPropertyFlags p_properties, VkImage& p_image, VkDeviceMemory& p_imageMemory);
 
+	void CopyBufferToImage(VkBuffer p_buffer, VkImage p_image, uint32_t p_width, uint32_t p_height);
+	void TransitionImageLayout(VkImage p_image, VkFormat p_format, VkImageLayout p_oldLayout, VkImageLayout p_newLayout);
 	void CopyBuffer(VkBuffer p_srcBuffer, VkBuffer p_dstBuffer, VkDeviceSize p_size);
+
+	VkImageView CreateImageView(VkImage p_image, VkFormat p_format);
+
+	VkCommandBuffer BeginSingleTimeCommands();
+	void EndSingleTimeCommands(VkCommandBuffer p_commandBuffer);
 
 public:
 	VkShaderModule LoadShader(const std::vector<char>& p_byteCode); //TODO : put LoadShader() in a Ressource manager or smth

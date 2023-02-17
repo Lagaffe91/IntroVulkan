@@ -1,5 +1,8 @@
 #include <set>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image/stb_image.h"
+
 #include "Utils.h"
 
 #include "GLFW/glfw3.h"
@@ -216,12 +219,15 @@ PhysicalDeviceDescription VKRenderer::GetBestDevice(const std::vector<VkPhysical
 		else
 		{
 			VkPhysicalDeviceFeatures deviceFeatures;
+			VkPhysicalDeviceProperties physicalDeviceProperties;
 			vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+			vkGetPhysicalDeviceProperties(device, &physicalDeviceProperties);
 
 			result.physicalDevice = device;
 			result.supportedQueues = supportedQueues;
 			result.deviceFeatures = deviceFeatures;
 			result.swapChainParameters = parameters;
+			result.deviceProperties = physicalDeviceProperties;
 			break;
 		}
 	}
@@ -667,6 +673,198 @@ bool VKRenderer::CreateCommandBuffer()
 	return result;
 }
 
+VkCommandBuffer VKRenderer::BeginSingleTimeCommands() {
+	VkCommandBufferAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocInfo.commandPool = this->mCommandPool;
+	allocInfo.commandBufferCount = 1;
+
+	VkCommandBuffer commandBuffer;
+	vkAllocateCommandBuffers(this->mLogicalDevice, &allocInfo, &commandBuffer);
+
+	VkCommandBufferBeginInfo beginInfo{};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+	return commandBuffer;
+}
+
+void VKRenderer::EndSingleTimeCommands(VkCommandBuffer p_commandBuffer) {
+	vkEndCommandBuffer(p_commandBuffer);
+
+	VkSubmitInfo submitInfo{};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &p_commandBuffer;
+
+	vkQueueSubmit(this->mGraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(this->mGraphicsQueue);
+
+	vkFreeCommandBuffers(this->mLogicalDevice, this->mCommandPool, 1, &p_commandBuffer);
+}
+void VKRenderer::CopyBufferToImage(VkBuffer p_buffer, VkImage p_image, uint32_t p_width, uint32_t p_height) {
+	VkCommandBuffer commandBuffer = this->BeginSingleTimeCommands();
+
+	VkBufferImageCopy bufferImageCopy{};
+	bufferImageCopy.bufferOffset = 0;
+	bufferImageCopy.bufferRowLength = 0;
+	bufferImageCopy.bufferImageHeight = 0;
+	bufferImageCopy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	bufferImageCopy.imageSubresource.mipLevel = 0;
+	bufferImageCopy.imageSubresource.baseArrayLayer = 0;
+	bufferImageCopy.imageSubresource.layerCount = 1;
+	bufferImageCopy.imageOffset = { 0, 0, 0 };
+	bufferImageCopy.imageExtent = {
+		p_width,
+		p_height,
+		1
+	};
+
+	vkCmdCopyBufferToImage(commandBuffer, p_buffer, p_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferImageCopy);
+
+	this->EndSingleTimeCommands(commandBuffer);
+}
+
+bool VKRenderer::CreateTextureImage()
+{
+	const char* filePath = "textures/texture.png"; //WOAH
+
+	bool result = false;
+
+	int texWidth, texHeight, texChannels;
+	stbi_uc* pixels = stbi_load(filePath, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+	VkDeviceSize imageSize = texWidth * texHeight * 4;
+
+	if (!pixels)
+		return false;
+
+	VkBuffer stagingBuffer;
+	VkDeviceMemory stagingBufferMemory;
+	result &= this->CreateBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+	void* data;
+	vkMapMemory(this->mLogicalDevice, stagingBufferMemory, 0, imageSize, 0, &data);
+	memcpy(data, pixels, static_cast<size_t>(imageSize));
+	vkUnmapMemory(this->mLogicalDevice, stagingBufferMemory);
+
+	stbi_image_free(pixels);
+
+	result &= this->CreateImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, this->mTextureImage, this->mTextureImageMemory);
+
+	this->TransitionImageLayout(this->mTextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	this->CopyBufferToImage(stagingBuffer, this->mTextureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+	this->TransitionImageLayout(this->mTextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+	vkDestroyBuffer(this->mLogicalDevice, stagingBuffer, nullptr);
+	vkFreeMemory(this->mLogicalDevice, stagingBufferMemory, nullptr);
+
+	return result;
+}
+
+VkImageView VKRenderer::CreateImageView(VkImage p_image, VkFormat p_format) 
+{
+	VkImageViewCreateInfo imageViewCreateInfo{};
+
+	imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	imageViewCreateInfo.image = p_image;
+	imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	imageViewCreateInfo.format = p_format;
+	imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+	imageViewCreateInfo.subresourceRange.levelCount = 1;
+	imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+	imageViewCreateInfo.subresourceRange.layerCount = 1;
+
+	VkImageView imageView;
+
+	vkCreateImageView(this->mLogicalDevice, &imageViewCreateInfo, nullptr, &imageView);
+
+	return imageView;
+}
+
+bool VKRenderer::CreateTextureImageView()
+{
+	this->mTextureImageView = this->CreateImageView(this->mTextureImage, VK_FORMAT_R8G8B8A8_SRGB);
+
+	return true;
+}
+
+void VKRenderer::TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
+{
+	VkCommandBuffer commandBuffer = this->BeginSingleTimeCommands();
+
+	VkImageMemoryBarrier imageMemoryBarrier{};
+
+	imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	imageMemoryBarrier.oldLayout = oldLayout;
+	imageMemoryBarrier.newLayout = newLayout;
+	imageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	imageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	imageMemoryBarrier.image = image;
+	imageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	imageMemoryBarrier.subresourceRange.baseMipLevel = 0;
+	imageMemoryBarrier.subresourceRange.levelCount = 1;
+	imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+	imageMemoryBarrier.subresourceRange.layerCount = 1;
+
+	VkPipelineStageFlags sourceStage;
+	VkPipelineStageFlags destinationStage;
+
+	if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+		imageMemoryBarrier.srcAccessMask = 0;
+		imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+		imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+		sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	}
+	else {
+		return;
+	}
+
+	vkCmdPipelineBarrier(
+		commandBuffer,
+		sourceStage, destinationStage,
+		0,
+		0, nullptr,
+		0, nullptr,
+		1, &imageMemoryBarrier
+	);
+
+	this->EndSingleTimeCommands(commandBuffer);
+}
+
+bool VKRenderer::CreateTextureSampler()
+{
+	VkSamplerCreateInfo samplerCreateInfo{};
+
+	samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
+	samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
+	samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerCreateInfo.anisotropyEnable = VK_TRUE;
+	samplerCreateInfo.maxAnisotropy = this->mPhysicalDevice.deviceProperties.limits.maxSamplerAnisotropy;
+	samplerCreateInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
+	samplerCreateInfo.compareEnable = VK_FALSE;
+	samplerCreateInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+	samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+
+	return vkCreateSampler(this->mLogicalDevice, &samplerCreateInfo, nullptr, &this->mTextureSampler) == VK_SUCCESS;
+}
+
+
 uint32_t VKRenderer::FindMemoryType(const uint32_t& p_filterBits, VkMemoryPropertyFlags properties)
 {
 	VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties;
@@ -877,6 +1075,43 @@ bool VKRenderer::CreateBuffer(VkDeviceSize p_size, VkBufferUsageFlags p_usage, V
 	return result;
 }
 
+bool VKRenderer::CreateImage(uint32_t p_width, uint32_t p_height, VkFormat p_format, VkImageTiling p_tiling, VkImageUsageFlags p_usage, VkMemoryPropertyFlags p_properties, VkImage& p_image, VkDeviceMemory& p_imageMemory)
+{
+	bool result = false;
+
+	VkImageCreateInfo imageCreateInfo{};
+
+	imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+	imageCreateInfo.extent.width = p_width;
+	imageCreateInfo.extent.height = p_height;
+	imageCreateInfo.extent.depth = 1;
+	imageCreateInfo.mipLevels = 1;
+	imageCreateInfo.arrayLayers = 1;
+	imageCreateInfo.format = p_format;
+	imageCreateInfo.tiling = p_tiling;
+	imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	imageCreateInfo.usage = p_usage;
+	imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	result = vkCreateImage(this->mLogicalDevice, &imageCreateInfo, nullptr, &p_image) == VK_SUCCESS;
+
+	VkMemoryRequirements memRequirements;
+	vkGetImageMemoryRequirements(this->mLogicalDevice, p_image, &memRequirements);
+
+	VkMemoryAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = memRequirements.size;
+	allocInfo.memoryTypeIndex = this->FindMemoryType(memRequirements.memoryTypeBits, p_properties);
+
+	result &= vkAllocateMemory(this->mLogicalDevice, &allocInfo, nullptr, &p_imageMemory) == VK_SUCCESS;
+
+	vkBindImageMemory(this->mLogicalDevice, p_image, p_imageMemory, 0);
+
+	return result;
+}
+
 bool VKRenderer::CreateIndexBuffer()
 {
 	VkDeviceSize bufferSize = sizeof(this->indices[0]) * this->indices.size();
@@ -920,6 +1155,9 @@ bool VKRenderer::Init(Window* p_window)
 	result &= this->SetupGraphicsPipeline();
 	result &= this->CreateFrameBuffers();
 	result &= this->CreateCommandBuffer();
+	result &= this->CreateTextureImage();
+	result &= this->CreateTextureImageView();
+	result &= this->CreateTextureSampler();
 	result &= this->CreateVertexBuffer();
 	result &= this->CreateSyncObjects();
 	result &= this->CreateIndexBuffer();
@@ -946,6 +1184,12 @@ void VKRenderer::Release()
 	//Index Buffer
 	vkDestroyBuffer(this->mLogicalDevice, this->mIndexBuffer, nullptr);
 	vkFreeMemory(this->mLogicalDevice, this->mIndexBufferMemory, nullptr);
+
+	//Texture
+	vkDestroySampler(this->mLogicalDevice, this->mTextureSampler, nullptr);
+	vkDestroyImageView(this->mLogicalDevice, this->mTextureImageView, nullptr);
+	vkDestroyImage(this->mLogicalDevice, this->mTextureImage, nullptr);
+	vkFreeMemory(this->mLogicalDevice, this->mTextureImageMemory, nullptr);
 
 	//Command buffer
 	vkFreeCommandBuffers(this->mLogicalDevice, this->mCommandPool, this->mGraphicsPipeline.MAX_CONCURENT_FRAMES, this->mCommandBuffer.data());

@@ -63,6 +63,7 @@ struct PhysicalDeviceDescription
 
 	DeviceSupportedQueues		supportedQueues;
 	SwapChainCapabilities		swapChainParameters;
+	VkPhysicalDeviceProperties  deviceProperties;
 };
 
 struct SwapChainDescription
