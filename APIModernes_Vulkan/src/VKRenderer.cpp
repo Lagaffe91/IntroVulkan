@@ -682,7 +682,7 @@ uint32_t VKRenderer::FindMemoryType(const uint32_t& p_filterBits, VkMemoryProper
 
 bool VKRenderer::CreateVertexBuffer()
 {
-	VkDeviceSize bufferSize = sizeof(this->mTriangleVertices[0]) * this->mTriangleVertices.size();
+	VkDeviceSize bufferSize = sizeof(this->vertices[0]) * this->vertices.size();
 
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
@@ -695,7 +695,7 @@ bool VKRenderer::CreateVertexBuffer()
 
 	void* data;
 	vkMapMemory(this->mLogicalDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
-	memcpy(data, this->mTriangleVertices.data(), bufferSize);
+	memcpy(data, this->vertices.data(), bufferSize);
 	vkUnmapMemory(this->mLogicalDevice, stagingBufferMemory);
 
 	//
@@ -799,7 +799,7 @@ void VKRenderer::RecordCommandBuffer(VkCommandBuffer& p_commandBuffer, uint32_t 
 	VkDeviceSize offsets[] = { 0 };
 	vkCmdBindVertexBuffers(p_commandBuffer, 0, 1, vertexBuffers, offsets);
 
-	vkCmdDraw(p_commandBuffer, static_cast<uint32_t>(this->mTriangleVertices.size()), 1, 0, 0);
+	vkCmdDraw(p_commandBuffer, static_cast<uint32_t>(this->vertices.size()), 1, 0, 0);
 
 	vkCmdEndRenderPass(p_commandBuffer);
 	vkEndCommandBuffer(p_commandBuffer);
