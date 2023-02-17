@@ -27,7 +27,7 @@
 
 struct Vertex
 {
-	glm::vec2 pos;
+	glm::vec3 pos;
 	glm::vec3 color;
 	glm::vec2 textCoords;
 };
@@ -96,6 +96,13 @@ struct GraphicPipelineDescription
 	VkPipeline			vkPipeline;
 
 	const int MAX_CONCURENT_FRAMES = 2; //Would like this parametrable !
+};
+
+struct DepthRessources
+{
+	VkImage			depthImage;
+	VkDeviceMemory	depthMemory;
+	VkImageView		depthImageView;
 };
 #pragma endregion Vulkan Renderer
 

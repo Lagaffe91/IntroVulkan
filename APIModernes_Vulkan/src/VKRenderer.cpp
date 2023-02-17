@@ -540,16 +540,6 @@ bool VKRenderer::CreateDescriptorSets()
 
 		vkUpdateDescriptorSets(this->mLogicalDevice, writeDescriptorSet.size(), writeDescriptorSet.data(), 0, nullptr);
 		
-		/*
-		HEY ! 
-
-		If you run the program in debug mode (a.k.a validation layers on) the program will crash at this command ! 
-		It look like it's not my fault, as highlighted in this github issue :
-			https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers/issues/593
-		Put the program on release config, and it will work as intended
-
-		Have fun !
-		*/
  	}
 
 	return result;
@@ -682,6 +672,22 @@ bool VKRenderer::SetupGraphicsPipeline()
 	subPassColorAttachement.attachment = 0;
 	subPassColorAttachement.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+	VkAttachmentDescription depthAttachmentDescription{};
+
+	depthAttachmentDescription.format			= this->FindDepthFormat();
+	depthAttachmentDescription.samples			= VK_SAMPLE_COUNT_1_BIT;
+	depthAttachmentDescription.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depthAttachmentDescription.storeOp			= VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachmentDescription.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	depthAttachmentDescription.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachmentDescription.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
+	depthAttachmentDescription.finalLayout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+
+	VkAttachmentReference depthAttachmentRef{};
+	depthAttachmentRef.attachment = 1;
+	depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
 
 	VkSubpassDescription subpassDescription{};
 	
@@ -689,6 +695,8 @@ bool VKRenderer::SetupGraphicsPipeline()
 	subpassDescription.pipelineBindPoint	= VK_PIPELINE_BIND_POINT_GRAPHICS;
 	subpassDescription.colorAttachmentCount = 1;
 	subpassDescription.pColorAttachments	= &subPassColorAttachement;
+	subpassDescription.pDepthStencilAttachment = &depthAttachmentRef;
+
 
 	VkAttachmentDescription colorAttachment{};
 	
@@ -706,21 +714,35 @@ bool VKRenderer::SetupGraphicsPipeline()
 
 	subpassDependency.srcSubpass	= VK_SUBPASS_EXTERNAL;
 	subpassDependency.dstSubpass	= 0;
-	subpassDependency.srcStageMask	= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	subpassDependency.srcStageMask	= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 	subpassDependency.srcAccessMask = 0;
-	subpassDependency.dstStageMask	= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	subpassDependency.dstStageMask	= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+
+	std::array<VkAttachmentDescription, 2> attachmentDescription{colorAttachment, depthAttachmentDescription};
 
 
 	VkRenderPassCreateInfo renderPassCreateInfo{};
 
-	renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	renderPassCreateInfo.attachmentCount = 1;
-	renderPassCreateInfo.pAttachments = &colorAttachment;
-	renderPassCreateInfo.subpassCount = 1;
-	renderPassCreateInfo.pSubpasses = &subpassDescription;
-	renderPassCreateInfo.dependencyCount = 1;
-	renderPassCreateInfo.pDependencies = &subpassDependency;
+	renderPassCreateInfo.sType				= VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	renderPassCreateInfo.attachmentCount	= attachmentDescription.size();
+	renderPassCreateInfo.pAttachments		= attachmentDescription.data();
+	renderPassCreateInfo.subpassCount		= 1;
+	renderPassCreateInfo.pSubpasses			= &subpassDescription;
+	renderPassCreateInfo.dependencyCount	= 1;
+	renderPassCreateInfo.pDependencies		= &subpassDependency;
+
+
+	VkPipelineDepthStencilStateCreateInfo pipelineDepthStencilStateCreateInfo{};
+
+	pipelineDepthStencilStateCreateInfo.sType				= VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	pipelineDepthStencilStateCreateInfo.depthTestEnable		= VK_TRUE;
+	pipelineDepthStencilStateCreateInfo.depthWriteEnable	= VK_TRUE;
+	pipelineDepthStencilStateCreateInfo.depthCompareOp		= VK_COMPARE_OP_LESS;
+	pipelineDepthStencilStateCreateInfo.depthBoundsTestEnable = VK_FALSE;
+	pipelineDepthStencilStateCreateInfo.stencilTestEnable = VK_FALSE;
+
 
 
 	if (vkCreateRenderPass(this->mLogicalDevice, &renderPassCreateInfo, nullptr, &this->mGraphicsPipeline.vkRenderPass) != VK_SUCCESS)
@@ -747,11 +769,46 @@ bool VKRenderer::SetupGraphicsPipeline()
 	graphicsPipelineCreateInfo.pMultisampleState	= &pipelineMultisampleStateCreateInfo;
 	graphicsPipelineCreateInfo.pColorBlendState		= &pipelineColorBlendStateCreateInfo;
 
-	graphicsPipelineCreateInfo.pDepthStencilState = nullptr;
-	graphicsPipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
-	graphicsPipelineCreateInfo.basePipelineIndex = -1;
+	graphicsPipelineCreateInfo.pDepthStencilState	= &pipelineDepthStencilStateCreateInfo;
+	graphicsPipelineCreateInfo.basePipelineHandle	= VK_NULL_HANDLE;
+	graphicsPipelineCreateInfo.basePipelineIndex	= -1;
 
 	return vkCreateGraphicsPipelines(this->mLogicalDevice, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, nullptr, &this->mGraphicsPipeline.vkPipeline) == VK_SUCCESS;
+}
+
+VkFormat VKRenderer::FindSupportedFormat(const std::vector<VkFormat>& p_candidates, VkImageTiling p_tiling, VkFormatFeatureFlags p_features) {
+	for (VkFormat format : p_candidates)
+	{
+		VkFormatProperties props;
+		vkGetPhysicalDeviceFormatProperties(this->mPhysicalDevice.physicalDevice, format, &props);
+
+		if (p_tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & p_features) == p_features)
+		{
+			return format;
+		}
+		else if (p_tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & p_features) == p_features)
+		{
+			return format;
+		}
+	}
+}
+
+
+VkFormat VKRenderer::FindDepthFormat()
+{
+	return this->FindSupportedFormat({ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT }, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+}
+
+bool VKRenderer::CreateDepthRessources()
+{
+	bool result = false;
+
+	VkFormat depthFormat = this->FindDepthFormat();
+
+	result = this->CreateImage(this->mSwapChain.extent.width, this->mSwapChain.extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, this->mDepthRessources.depthImage, this->mDepthRessources.depthMemory);
+	this->mDepthRessources.depthImageView = this->CreateImageView(this->mDepthRessources.depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+
+	return result;
 }
 
 bool VKRenderer::CreateFrameBuffers()
@@ -760,8 +817,9 @@ bool VKRenderer::CreateFrameBuffers()
 
 	for (int i = 0; i < this->mSwapChain.frameBuffers.capacity(); i++)
 	{
-		VkImageView attachments[] = {
-			this->mSwapChain.imageViews[i]
+		std::array<VkImageView,2> attachments = {
+			this->mSwapChain.imageViews[i],
+			this->mDepthRessources.depthImageView
 		};
 
 		VkFramebufferCreateInfo framebufferCreateInfo{};
@@ -771,8 +829,8 @@ bool VKRenderer::CreateFrameBuffers()
 		framebufferCreateInfo.width = this->mSwapChain.extent.width;
 		framebufferCreateInfo.renderPass = this->mGraphicsPipeline.vkRenderPass;
 		framebufferCreateInfo.layers = 1;
-		framebufferCreateInfo.attachmentCount = 1;
-		framebufferCreateInfo.pAttachments = attachments;
+		framebufferCreateInfo.attachmentCount = attachments.size();
+		framebufferCreateInfo.pAttachments = attachments.data();
 
 		vkCreateFramebuffer(this->mLogicalDevice, &framebufferCreateInfo, nullptr, &this->mSwapChain.frameBuffers[i]) == VK_SUCCESS;
 	}
@@ -903,7 +961,7 @@ bool VKRenderer::CreateTextureImage()
 	return result;
 }
 
-VkImageView VKRenderer::CreateImageView(VkImage p_image, VkFormat p_format) 
+VkImageView VKRenderer::CreateImageView(VkImage p_image, VkFormat p_format, VkImageAspectFlags p_aspectFlags)
 {
 	VkImageViewCreateInfo imageViewCreateInfo{};
 
@@ -911,7 +969,7 @@ VkImageView VKRenderer::CreateImageView(VkImage p_image, VkFormat p_format)
 	imageViewCreateInfo.image = p_image;
 	imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 	imageViewCreateInfo.format = p_format;
-	imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	imageViewCreateInfo.subresourceRange.aspectMask = p_aspectFlags;
 	imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
 	imageViewCreateInfo.subresourceRange.levelCount = 1;
 	imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
@@ -926,7 +984,7 @@ VkImageView VKRenderer::CreateImageView(VkImage p_image, VkFormat p_format)
 
 bool VKRenderer::CreateTextureImageView()
 {
-	this->mTextureImageView = this->CreateImageView(this->mTextureImage, VK_FORMAT_R8G8B8A8_SRGB);
+	this->mTextureImageView = this->CreateImageView(this->mTextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 
 	return true;
 }
@@ -1105,9 +1163,12 @@ void VKRenderer::RecordCommandBuffer(VkCommandBuffer& p_commandBuffer, uint32_t 
 	renderPassBeginInfo.renderArea.extent	= this->mSwapChain.extent;
 	renderPassBeginInfo.renderArea.offset	= { 0,0 };
 
-	VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
-	renderPassBeginInfo.clearValueCount		= 1;
-	renderPassBeginInfo.pClearValues		= &clearColor;
+	std::array<VkClearValue, 2> clearValues{};
+	clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
+	clearValues[1].depthStencil = { 1.0f, 0 };
+
+	renderPassBeginInfo.clearValueCount		= clearValues.size();
+	renderPassBeginInfo.pClearValues		= clearValues.data();
 
 	vkCmdBeginRenderPass(p_commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -1293,6 +1354,7 @@ bool VKRenderer::Init(Window* p_window)
 	result &= this->PickPhysicalDevice();
 	result &= this->CreateLogicalDevice();
 	result &= this->CreateSwapChain();
+	result &= this->CreateDepthRessources();
 	result &= this->CreateDescriptorSetLayout();
 	result &= this->SetupGraphicsPipeline();
 	result &= this->CreateFrameBuffers();
@@ -1344,18 +1406,22 @@ void VKRenderer::Release()
 	for (VkFramebuffer frameBuffer : this->mSwapChain.frameBuffers)
 		vkDestroyFramebuffer(this->mLogicalDevice, frameBuffer, nullptr);
 
+	//Depth ressources
+	vkDestroyImage(this->mLogicalDevice, this->mDepthRessources.depthImage, nullptr);
+	vkDestroyImageView(this->mLogicalDevice, this->mDepthRessources.depthImageView, nullptr);
+	vkFreeMemory(this->mLogicalDevice, this->mDepthRessources.depthMemory, nullptr);
+
 	//Descriptors
+	vkDestroyDescriptorSetLayout(this->mLogicalDevice, this->mDescriptorSetLayout, nullptr);
 	vkDestroyDescriptorPool(this->mLogicalDevice, this->mDescriptorPool, nullptr);
 	for (size_t i = 0; i < this->mGraphicsPipeline.MAX_CONCURENT_FRAMES; i++)
 	{
 		vkDestroyBuffer(this->mLogicalDevice, this->mUniformBuffers[i], nullptr);
 		vkFreeMemory(this->mLogicalDevice, this->mUniformBuffersMemory[i], nullptr);
 	}
-	vkDestroyDescriptorSetLayout(this->mLogicalDevice, this->mDescriptorSetLayout, nullptr);
 
 	//Pipeline
 	vkDestroyPipeline(this->mLogicalDevice, this->mGraphicsPipeline.vkPipeline, nullptr);
-	vkDestroyDescriptorSetLayout(this->mLogicalDevice, this->mDescriptorSetLayout, nullptr);
 	vkDestroyPipelineLayout(this->mLogicalDevice, this->mGraphicsPipeline.vkPipelineLayout, nullptr);
 	vkDestroyRenderPass(this->mLogicalDevice, this->mGraphicsPipeline.vkRenderPass, nullptr);
 

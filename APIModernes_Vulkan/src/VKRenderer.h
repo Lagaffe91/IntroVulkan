@@ -14,13 +14,22 @@ class VKRenderer : public IRenderer
 private :
 	const std::vector<Vertex> vertices = 
 	{
-		{{-0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-		{{0.5f, -0.5f} , {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
-		{{0.5f, 0.5f}  , {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}},
-		{{-0.5f, 0.5f} , {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}}
+		{{-0.5f,-0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+		{{0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+		{{0.5f,  0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}},
+		{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
+
+		{ {-1.f, -0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
+		{{0.0f, -0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}},
+		{{0.0f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+		{{-1.f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
 	};
 
-	const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0	};
+	const std::vector<uint16_t> indices = 
+	{
+		0, 1, 2, 2, 3, 0,
+		4, 5, 6, 6, 7, 4	
+	};
 
 	//Would like this to be parametrable ?
 	const std::vector<const char*> mValidationLayers = { "VK_LAYER_KHRONOS_validation" };
@@ -36,6 +45,8 @@ private :
 	PhysicalDeviceDescription	mPhysicalDevice;
 	SwapChainDescription		mSwapChain;
 	GraphicPipelineDescription  mGraphicsPipeline;
+	DepthRessources				mDepthRessources;
+
 
 	VkShaderModule mVertexShader;
 	VkShaderModule mFragmentShader;
@@ -107,6 +118,12 @@ private :
 
 	bool SetupGraphicsPipeline();
 
+	VkFormat FindSupportedFormat(const std::vector<VkFormat>& p_candidates, VkImageTiling p_tiling, VkFormatFeatureFlags p_features);
+
+	VkFormat FindDepthFormat();
+
+	bool CreateDepthRessources();
+
 	bool CreateFrameBuffers();
 
 	bool CreateCommandBuffer();
@@ -134,7 +151,7 @@ private :
 	void TransitionImageLayout(VkImage p_image, VkFormat p_format, VkImageLayout p_oldLayout, VkImageLayout p_newLayout);
 	void CopyBuffer(VkBuffer p_srcBuffer, VkBuffer p_dstBuffer, VkDeviceSize p_size);
 
-	VkImageView CreateImageView(VkImage p_image, VkFormat p_format);
+	VkImageView CreateImageView(VkImage p_image, VkFormat p_format, VkImageAspectFlags p_aspectFlags);
 
 	VkCommandBuffer BeginSingleTimeCommands();
 	void EndSingleTimeCommands(VkCommandBuffer p_commandBuffer);
