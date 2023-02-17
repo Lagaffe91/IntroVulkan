@@ -5,6 +5,8 @@
 
 #include "Maths.h"
 
+#include "glm/glm.hpp"
+
 #include "vulkan/vulkan.h"
 
 #pragma region App Parameters
@@ -27,9 +29,9 @@
 
 struct Vertex
 {
-	Vector3 pos;
-	Vector3 color;
-	Vector2 textCoords;
+	glm::vec2 pos;
+	glm::vec3 color;
+	glm::vec2 textCoords;
 };
 
 //TODO : Add VKUtils namespace because why not kekew

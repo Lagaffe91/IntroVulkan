@@ -25,6 +25,9 @@
     <Filter Include="Fichiers d%27en-tête\stb_image">
       <UniqueIdentifier>{03dce603-caaf-4373-ad82-87220dcc1a84}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Fichiers d%27en-tête\glm">
+      <UniqueIdentifier>{d0b90b43-d12c-4d8e-aede-de3e65e3a864}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\GLFW\glfw3.h">
@@ -174,11 +177,11 @@
     <ClInclude Include="src\Utils.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
-    <ClInclude Include="src\Maths.h">
-      <Filter>Fichiers d%27en-tête</Filter>
-    </ClInclude>
     <ClInclude Include="include\stb_image\stb_image.h">
       <Filter>Fichiers d%27en-tête\stb_image</Filter>
+    </ClInclude>
+    <ClInclude Include="include\glm\glm.hpp">
+      <Filter>Fichiers d%27en-tête\glm</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
