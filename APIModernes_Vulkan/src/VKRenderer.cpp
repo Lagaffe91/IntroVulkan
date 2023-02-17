@@ -482,7 +482,7 @@ bool VKRenderer::CreateDescriptorPool()
 	VkDescriptorPoolCreateInfo descriptorPoolCreateInfo{};
 
 	descriptorPoolCreateInfo.sType			= VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	descriptorPoolCreateInfo.poolSizeCount	= descriptorPoolSize.size();
+	descriptorPoolCreateInfo.poolSizeCount	= (uint32_t)descriptorPoolSize.size();
 	descriptorPoolCreateInfo.pPoolSizes		= descriptorPoolSize.data();
 	descriptorPoolCreateInfo.maxSets		= (uint32_t)(this->mGraphicsPipeline.MAX_CONCURENT_FRAMES);
 
@@ -506,11 +506,11 @@ bool VKRenderer::CreateDescriptorSets()
 
 	for (size_t i = 0; i < this->mGraphicsPipeline.MAX_CONCURENT_FRAMES; i++)
 	{
-		VkDescriptorBufferInfo descriptorBufferInfo{};
+		VkDescriptorBufferInfo descriptorUniformBufferInfo{};
 
-		descriptorBufferInfo.buffer = this->mUniformBuffers[i];
-		descriptorBufferInfo.offset = 0;
-		descriptorBufferInfo.range = sizeof(UniformBufferObject);
+		descriptorUniformBufferInfo.buffer	= this->mUniformBuffers[i];
+		descriptorUniformBufferInfo.offset	= 0;
+		descriptorUniformBufferInfo.range	= sizeof(UniformBufferObject);
 
 		VkDescriptorImageInfo descriptorImageInfo{};
 
@@ -518,7 +518,7 @@ bool VKRenderer::CreateDescriptorSets()
 		descriptorImageInfo.imageView	= this->mTextureImageView;
 		descriptorImageInfo.sampler		= this->mTextureSampler;
 
-		std::array<VkWriteDescriptorSet, 2>  writeDescriptorSet; //This will need to be an array when i'll do maths stuff
+		std::array<VkWriteDescriptorSet, 2>  writeDescriptorSet{}; //This will need to be an array when i'll do maths stuff
 
 		writeDescriptorSet[0].sType				= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		writeDescriptorSet[0].dstSet			= this->mDescriptorSets[i];
@@ -526,7 +526,7 @@ bool VKRenderer::CreateDescriptorSets()
 		writeDescriptorSet[0].dstArrayElement	= 0;
 		writeDescriptorSet[0].descriptorType	= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		writeDescriptorSet[0].descriptorCount	= 1;
-		writeDescriptorSet[0].pBufferInfo		= &descriptorBufferInfo;
+		writeDescriptorSet[0].pBufferInfo		= &descriptorUniformBufferInfo;
 		writeDescriptorSet[0].pImageInfo		= nullptr;
 		writeDescriptorSet[0].pTexelBufferView	= nullptr;
 
@@ -1293,18 +1293,18 @@ bool VKRenderer::Init(Window* p_window)
 	result &= this->PickPhysicalDevice();
 	result &= this->CreateLogicalDevice();
 	result &= this->CreateSwapChain();
+	result &= this->CreateDescriptorSetLayout();
+	result &= this->SetupGraphicsPipeline();
+	result &= this->CreateFrameBuffers();
 	result &= this->CreateCommandBuffer();
 	result &= this->CreateTextureImage();
 	result &= this->CreateTextureImageView();
 	result &= this->CreateTextureSampler();
-	result &= this->CreateDescriptorSetLayout();
+	result &= this->CreateVertexBuffer();
+	result &= this->CreateIndexBuffer();
 	result &= this->CreateUniformBuffers();
 	result &= this->CreateDescriptorPool();
 	result &= this->CreateDescriptorSets();
-	result &= this->CreateFrameBuffers();
-	result &= this->SetupGraphicsPipeline();
-	result &= this->CreateVertexBuffer();
-	result &= this->CreateIndexBuffer();
 	result &= this->CreateSyncObjects();
 
 	return result;
