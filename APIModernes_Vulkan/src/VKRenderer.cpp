@@ -213,23 +213,24 @@ PhysicalDeviceDescription VKRenderer::GetBestDevice(const std::vector<VkPhysical
 		SwapChainCapabilities parameters = this->GetSwapChainParameters(device);
 
 		if (!parameters.isComplete())
-		{
-			continue; //Crash the program somehow
-		}
-		else
-		{
-			VkPhysicalDeviceFeatures deviceFeatures;
-			VkPhysicalDeviceProperties physicalDeviceProperties;
-			vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
-			vkGetPhysicalDeviceProperties(device, &physicalDeviceProperties);
+			continue;
+		
+		VkPhysicalDeviceFeatures deviceFeatures;
+		vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
 
-			result.physicalDevice = device;
-			result.supportedQueues = supportedQueues;
-			result.deviceFeatures = deviceFeatures;
-			result.swapChainParameters = parameters;
-			result.deviceProperties = physicalDeviceProperties;
-			break;
-		}
+		if (deviceFeatures.samplerAnisotropy == VK_FALSE)
+			continue;
+		
+		//Device found
+		VkPhysicalDeviceProperties physicalDeviceProperties;
+		vkGetPhysicalDeviceProperties(device, &physicalDeviceProperties);
+
+		result.physicalDevice = device;
+		result.supportedQueues = supportedQueues;
+		result.deviceFeatures = deviceFeatures;
+		result.swapChainParameters = parameters;
+		result.deviceProperties = physicalDeviceProperties;
+		break;
 	}
 
 	return result;
@@ -854,7 +855,7 @@ bool VKRenderer::CreateTextureSampler()
 	samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	samplerCreateInfo.anisotropyEnable = VK_TRUE;
-	samplerCreateInfo.maxAnisotropy = this->mPhysicalDevice.deviceProperties.limits.maxSamplerAnisotropy;
+	samplerCreateInfo.maxAnisotropy = this->mPhysicalDevice.deviceProperties.limits.maxSamplerAnisotropy; //MAXIMUM PODER
 	samplerCreateInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 	samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
 	samplerCreateInfo.compareEnable = VK_FALSE;
