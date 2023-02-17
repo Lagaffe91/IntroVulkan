@@ -684,23 +684,71 @@ bool VKRenderer::CreateVertexBuffer()
 {
 	VkDeviceSize bufferSize = sizeof(this->mTriangleVertices[0]) * this->mTriangleVertices.size();
 
-	if (this->CreateBuffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, this->mVertexBuffer, this->mVertexBufferMemory))
-		vkBindBufferMemory(this->mLogicalDevice, this->mVertexBuffer, this->mVertexBufferMemory, 0);
-	else
-		return false;
+	VkBuffer stagingBuffer;
+	VkDeviceMemory stagingBufferMemory;
+
+	bool result = this->CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory) == VK_SUCCESS;
 
 	//
-	//Copy data
+	//Copy data to buffer
 	//
 
 	void* data;
-	vkMapMemory(this->mLogicalDevice, this->mVertexBufferMemory, 0, bufferSize, 0, &data);
-	
+	vkMapMemory(this->mLogicalDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
 	memcpy(data, this->mTriangleVertices.data(), bufferSize);
+	vkUnmapMemory(this->mLogicalDevice, stagingBufferMemory);
 
-	vkUnmapMemory(this->mLogicalDevice, this->mVertexBufferMemory); 
+	//
+	//stagering to vertex buffer
+	//
 
-	return true;
+	result&= this->CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, this->mVertexBuffer, this->mVertexBufferMemory) == VK_SUCCESS;
+
+	this->CopyBuffer(stagingBuffer, this->mVertexBuffer, bufferSize);
+
+	vkDestroyBuffer(this->mLogicalDevice, stagingBuffer, nullptr);
+	vkFreeMemory(this->mLogicalDevice, stagingBufferMemory, nullptr);
+
+	return result;
+}
+
+void VKRenderer::CopyBuffer(VkBuffer p_srcBuffer, VkBuffer p_dstBuffer, VkDeviceSize p_size)
+{
+	VkCommandBufferAllocateInfo commandBufferAllocateInfo{};
+
+	commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	commandBufferAllocateInfo.commandPool = this->mCommandPool;
+	commandBufferAllocateInfo.commandBufferCount = 1;
+
+	VkCommandBuffer commandBuffer;
+	vkAllocateCommandBuffers(this->mLogicalDevice, &commandBufferAllocateInfo, &commandBuffer);
+
+	VkCommandBufferBeginInfo beginInfo{};
+
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+	VkBufferCopy bufferCopy{};
+
+	bufferCopy.size = p_size;
+
+	vkCmdCopyBuffer(commandBuffer, p_srcBuffer, p_dstBuffer, 1, &bufferCopy);
+
+	vkEndCommandBuffer(commandBuffer);
+
+	VkSubmitInfo submitInfo{};
+
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffer;
+
+	vkQueueSubmit(this->mGraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(this->mGraphicsQueue);
+
+	vkFreeCommandBuffers(this->mLogicalDevice, this->mCommandPool, 1, &commandBuffer);
 }
 
 
@@ -813,7 +861,7 @@ bool VKRenderer::CreateBuffer(VkDeviceSize p_size, VkBufferUsageFlags p_usage, V
 
 	VkMemoryRequirements memoryRequirements;
 
-	vkGetBufferMemoryRequirements(this->mLogicalDevice, this->mVertexBuffer, &memoryRequirements);
+	vkGetBufferMemoryRequirements(this->mLogicalDevice, p_buffer, &memoryRequirements);
 
 	VkMemoryAllocateInfo memoryAllocateInfo{};
 
@@ -822,6 +870,8 @@ bool VKRenderer::CreateBuffer(VkDeviceSize p_size, VkBufferUsageFlags p_usage, V
 	memoryAllocateInfo.memoryTypeIndex = this->FindMemoryType(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 	result &= vkAllocateMemory(this->mLogicalDevice, &memoryAllocateInfo, nullptr, &p_bufferMemory) == VK_SUCCESS;
+
+	vkBindBufferMemory(this->mLogicalDevice, p_buffer, p_bufferMemory, 0);
 
 	return result;
 }
