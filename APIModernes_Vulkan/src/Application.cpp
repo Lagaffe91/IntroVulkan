@@ -61,6 +61,8 @@ int Application::Run(const std::string& p_windowName, const int& p_width, const 
 	
 	while (!mWindow->ShouldClose()) 
 	{
+		if (glfwGetKey(mWindow->mWindow, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+			glfwSetWindowShouldClose(mWindow->mWindow, true);
 		glfwPollEvents();
 		this->mRenderer->Render();
 	}
