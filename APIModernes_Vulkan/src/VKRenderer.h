@@ -13,9 +13,9 @@ class VKRenderer : public IRenderer
 {
 private :
 	const std::vector<Vertex> mTriangleVertices = {
-	{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-	{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-	{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+	{{0.0f, -0.5f}, {1.0f, 1.0f, 0.0f}},
+	{{0.5f, 0.5f}, {1.0f, 1.0f, 0.0f}},
+	{{-0.5f, 0.5f}, {1.0f, 0.0f, 1.0f}}
 	};
 
 	//Would like this to be parametrable ?
@@ -88,7 +88,7 @@ private :
 
 	bool CreateSyncObjects();
 
-	uint32_t FindMemoryType(const uint32_t& p_filterBits, VkMemoryPropertyFlags& properties);
+	uint32_t FindMemoryType(const uint32_t& p_filterBits, VkMemoryPropertyFlags properties);
 
 public:
 	VkShaderModule LoadShader(const std::vector<char>& p_byteCode); //TODO : put LoadShader() in a Ressource manager or smth

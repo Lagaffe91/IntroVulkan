@@ -667,7 +667,7 @@ bool VKRenderer::CreateCommandBuffer()
 	return result;
 }
 
-uint32_t VKRenderer::FindMemoryType(const uint32_t& p_filterBits, VkMemoryPropertyFlags& properties)
+uint32_t VKRenderer::FindMemoryType(const uint32_t& p_filterBits, VkMemoryPropertyFlags properties)
 {
 	VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties;
 
@@ -682,6 +682,11 @@ uint32_t VKRenderer::FindMemoryType(const uint32_t& p_filterBits, VkMemoryProper
 
 bool VKRenderer::CreateVertexBuffer()
 {
+
+	//
+	//Allocate gpu mem
+	//
+
 	VkBufferCreateInfo bufferCreateInfo{};
 
 	bufferCreateInfo.sType			= VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -699,12 +704,24 @@ bool VKRenderer::CreateVertexBuffer()
 
 	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	memoryAllocateInfo.allocationSize = memoryRequirements.size;
-	memoryAllocateInfo.memoryTypeIndex = FindMemoryType(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	memoryAllocateInfo.memoryTypeIndex = this->FindMemoryType(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 	result &= vkAllocateMemory(this->mLogicalDevice, &memoryAllocateInfo, nullptr, &this->mVertexBufferMemory) == VK_SUCCESS;
 	
 	if(result)
 		vkBindBufferMemory(this->mLogicalDevice, this->mVertexBuffer, this->mVertexBufferMemory, 0);
+
+	//
+	//Copy data
+	//
+
+	void* data;
+	vkMapMemory(this->mLogicalDevice, this->mVertexBufferMemory, 0, bufferCreateInfo.size, 0, &data);
+	
+	memcpy(data, this->mTriangleVertices.data(), bufferCreateInfo.size);
+
+
+	vkUnmapMemory(this->mLogicalDevice, this->mVertexBufferMemory);
 
 	return result; 
 }
@@ -750,7 +767,14 @@ void VKRenderer::RecordCommandBuffer(VkCommandBuffer& p_commandBuffer, uint32_t 
 
 	vkCmdSetScissor(p_commandBuffer, 0, 1, &scissor);
 
-	vkCmdDraw(p_commandBuffer, 3, 1, 0, 0);
+
+	vkCmdBindPipeline(p_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->mGraphicsPipeline.vkPipeline);
+
+	VkBuffer vertexBuffers[] = { this->mVertexBuffer };
+	VkDeviceSize offsets[] = { 0 };
+	vkCmdBindVertexBuffers(p_commandBuffer, 0, 1, vertexBuffers, offsets);
+
+	vkCmdDraw(p_commandBuffer, static_cast<uint32_t>(this->mTriangleVertices.size()), 1, 0, 0);
 
 	vkCmdEndRenderPass(p_commandBuffer);
 	vkEndCommandBuffer(p_commandBuffer);
