@@ -23,7 +23,7 @@ bool VKRenderer::CreateVKInstance()
 	applicationInfo.applicationVersion = VK_MAKE_VERSION(APP_VERSION_MAJOR, APP_VERSION_MINOR, APP_VERSION_PATCH);
 	applicationInfo.pEngineName = ENGINE_NAME;
 	applicationInfo.engineVersion = VK_MAKE_VERSION(ENGINE_VERSION_MAJOR, ENGINE_VERSION_MINOR, ENGINE_VERSION_PATCH);
-	applicationInfo.apiVersion = VK_API_VERSION_1_1;
+	applicationInfo.apiVersion = VK_API_VERSION_1_3;
 
 	//
 	// VkApplicationInfo initialisation
@@ -443,7 +443,7 @@ bool VKRenderer::CreateDescriptorPool()
 {
 	VkDescriptorPoolSize descriptorPoolSize{};
 
-	descriptorPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	descriptorPoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	descriptorPoolSize.descriptorCount = static_cast<uint32_t>(this->mGraphicsPipeline.MAX_CONCURENT_FRAMES);
 
 	VkDescriptorPoolCreateInfo descriptorPoolCreateInfo{};
@@ -479,18 +479,18 @@ bool VKRenderer::CreateDescriptorSets()
 		descriptorImageInfo.imageView	= this->mTextureImageView;
 		descriptorImageInfo.sampler		= this->mTextureSampler;
 
-		VkWriteDescriptorSet writeDescriptorSet; //This will need to be an array when i'll do maths stuff
+		std::array<VkWriteDescriptorSet, 1>  writeDescriptorSet; //This will need to be an array when i'll do maths stuff
 
-		writeDescriptorSet.sType			= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		writeDescriptorSet.dstSet			= this->mDescriptorSets[i];
-		writeDescriptorSet.dstBinding		= 1;
-		writeDescriptorSet.dstArrayElement	= 0;
-		writeDescriptorSet.descriptorType	= VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		writeDescriptorSet.descriptorCount	= 1;
-		writeDescriptorSet.pImageInfo		= &descriptorImageInfo;
+		writeDescriptorSet[0].sType				= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		writeDescriptorSet[0].dstSet			= this->mDescriptorSets[i];
+		writeDescriptorSet[0].dstBinding		= 1;
+		writeDescriptorSet[0].dstArrayElement	= 0;
+		writeDescriptorSet[0].descriptorType	= VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		writeDescriptorSet[0].descriptorCount	= 1;
+		writeDescriptorSet[0].pImageInfo		= &descriptorImageInfo;
 
-		vkUpdateDescriptorSets(this->mLogicalDevice, 1, &writeDescriptorSet, 0, nullptr);
-	}
+		vkUpdateDescriptorSets(this->mLogicalDevice, writeDescriptorSet.size(), writeDescriptorSet.data(), 0, nullptr);
+ 	}
 
 	return result;
 }
@@ -1233,18 +1233,18 @@ bool VKRenderer::Init(Window* p_window)
 	result &= this->PickPhysicalDevice();
 	result &= this->CreateLogicalDevice();
 	result &= this->CreateSwapChain();
-	result &= this->CreateDescriptorSetLayout();
-	result &= this->CreateDescriptorPool();
-	result &= this->CreateDescriptorSets();
-	result &= this->SetupGraphicsPipeline();
-	result &= this->CreateFrameBuffers();
 	result &= this->CreateCommandBuffer();
 	result &= this->CreateTextureImage();
 	result &= this->CreateTextureImageView();
 	result &= this->CreateTextureSampler();
+	result &= this->CreateDescriptorSetLayout();
+	result &= this->CreateDescriptorPool();
+	result &= this->CreateDescriptorSets();
+	result &= this->CreateFrameBuffers();
+	result &= this->SetupGraphicsPipeline();
 	result &= this->CreateVertexBuffer();
-	result &= this->CreateSyncObjects();
 	result &= this->CreateIndexBuffer();
+	result &= this->CreateSyncObjects();
 
 	return result;
 }
