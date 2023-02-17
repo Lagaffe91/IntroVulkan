@@ -1,3 +1,4 @@
+#include <unordered_map>
 #include <set>
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -7,6 +8,9 @@
 
 #define GLFW_INCLUDE_VULKAN
 #include "GLFW/glfw3.h"
+
+#define TINYOBJLOADER_IMPLEMENTATION
+#include "tinyobjloader/tiny_obj_loader.h"
 
 #include "Utils.h"
 
@@ -1362,6 +1366,7 @@ bool VKRenderer::Init(Window* p_window)
 	result &= this->CreateTextureImage();
 	result &= this->CreateTextureImageView();
 	result &= this->CreateTextureSampler();
+	result &= this->LoadModel(MODEL_PATH);
 	result &= this->CreateVertexBuffer();
 	result &= this->CreateIndexBuffer();
 	result &= this->CreateUniformBuffers();
@@ -1524,4 +1529,48 @@ void VKRenderer::Render()
 	vkQueuePresentKHR(this->mPresentQueue, &presentInfo);
 
 	this->mCurrentFrame = (this->mCurrentFrame + 1) % this->mGraphicsPipeline.MAX_CONCURENT_FRAMES;
+}
+
+//In a perfect world this would go to utils.h, but i dont have the time to do that anymore
+//Btw it look so uneficient xDDD
+bool VKRenderer::LoadModel(const char* p_filepath)
+{
+	bool result = false;
+
+	tinyobj::attrib_t attrib;
+	std::vector<tinyobj::shape_t> shapes;
+	std::vector<tinyobj::material_t> materials;
+	std::string err;
+
+	result = tinyobj::LoadObj(&attrib, &shapes, &materials, &err, p_filepath);
+
+	std::unordered_map<Vertex, uint32_t> uniqueVertices{};
+
+	for (const auto& shape : shapes) {
+		for (const auto& index : shape.mesh.indices) {
+			Vertex vertex{};
+
+			vertex.pos = {
+				attrib.vertices[3 * index.vertex_index + 0],
+				attrib.vertices[3 * index.vertex_index + 1],
+				attrib.vertices[3 * index.vertex_index + 2]
+			};
+
+			vertex.textCoords = {
+				attrib.texcoords[2 * index.texcoord_index + 0],
+				1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
+			};
+
+			vertex.color = { 1.0f, 1.0f, 1.0f };
+
+			if (uniqueVertices.count(vertex) == 0) {
+				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+				this->vertices.push_back(vertex);
+			}
+
+			this->indices.push_back(uniqueVertices[vertex]);
+		}
+	}
+
+	return result;
 }

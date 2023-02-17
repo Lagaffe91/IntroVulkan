@@ -12,24 +12,8 @@
 class VKRenderer : public IRenderer
 {
 private :
-	const std::vector<Vertex> vertices = 
-	{
-		{{-0.5f,-0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-		{{0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
-		{{0.5f,  0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}},
-		{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
-
-		{ {-1.f, -0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
-		{{0.0f, -0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}},
-		{{0.0f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
-		{{-1.f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
-	};
-
-	const std::vector<uint16_t> indices = 
-	{
-		0, 1, 2, 2, 3, 0,
-		4, 5, 6, 6, 7, 4	
-	};
+	std::vector<Vertex> vertices;
+	std::vector<uint16_t> indices;
 
 	//Would like this to be parametrable ?
 	const std::vector<const char*> mValidationLayers = { "VK_LAYER_KHRONOS_validation" };
@@ -202,4 +186,5 @@ public:
 	bool Init(Window* p_window) override;
 	void Release() override;
 	void Render() override;
+	bool LoadModel(const char* p_filepath);
 };

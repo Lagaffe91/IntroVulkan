@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "glm/glm.hpp"
+#include <glm/gtx/hash.hpp>
 
 #include "vulkan/vulkan.h"
 
@@ -23,14 +24,30 @@
 #define ENGINE_VERSION_MINOR	0
 #define ENGINE_VERSION_PATCH	0	
 
+#define MODEL_PATH "models/model.obj"
+
 #pragma endregion App Parameters
 
 struct Vertex
-{
+{	
 	glm::vec3 pos;
 	glm::vec3 color;
 	glm::vec2 textCoords;
+
+	bool operator==(const Vertex& other) const {
+		return pos == other.pos && color == other.color && textCoords == other.textCoords;
+	}
 };
+
+namespace std {
+	template<> struct hash<Vertex> {
+		size_t operator()(Vertex const& vertex) const {
+			return ((hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^ (hash<glm::vec2>()(vertex.textCoords) << 1);
+		}
+	};
+}
+
+
 
 struct UniformBufferObject 
 {
