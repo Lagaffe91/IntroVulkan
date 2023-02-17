@@ -28,6 +28,9 @@
     <Filter Include="Fichiers d%27en-tête\glm">
       <UniqueIdentifier>{d0b90b43-d12c-4d8e-aede-de3e65e3a864}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Fichiers de ressources\shaders">
+      <UniqueIdentifier>{31b28da0-504b-4512-9bf3-38680230b414}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\GLFW\glfw3.h">
@@ -206,5 +209,13 @@
     <ClCompile Include="src\Utils.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\triangle.frag">
+      <Filter>Fichiers de ressources\shaders</Filter>
+    </None>
+    <None Include="shaders\triangle.vert">
+      <Filter>Fichiers de ressources\shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

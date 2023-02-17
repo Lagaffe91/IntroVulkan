@@ -236,6 +236,10 @@
     <ClCompile Include="src\VKRenderer.cpp" />
     <ClCompile Include="src\Window.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\triangle.frag" />
+    <None Include="shaders\triangle.vert" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
