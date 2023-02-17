@@ -682,48 +682,25 @@ uint32_t VKRenderer::FindMemoryType(const uint32_t& p_filterBits, VkMemoryProper
 
 bool VKRenderer::CreateVertexBuffer()
 {
+	VkDeviceSize bufferSize = sizeof(this->mTriangleVertices[0]) * this->mTriangleVertices.size();
 
-	//
-	//Allocate gpu mem
-	//
-
-	VkBufferCreateInfo bufferCreateInfo{};
-
-	bufferCreateInfo.sType			= VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	bufferCreateInfo.size			= sizeof(this->mTriangleVertices[0]) * this->mTriangleVertices.size();
-	bufferCreateInfo.usage			= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-	bufferCreateInfo.sharingMode	= VK_SHARING_MODE_EXCLUSIVE;
-	
-	bool result = vkCreateBuffer(this->mLogicalDevice, &bufferCreateInfo, nullptr, &this->mVertexBuffer) == VK_SUCCESS;
-
-	VkMemoryRequirements memoryRequirements;
-
-	vkGetBufferMemoryRequirements(this->mLogicalDevice, this->mVertexBuffer, &memoryRequirements);
-
-	VkMemoryAllocateInfo memoryAllocateInfo{};
-
-	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	memoryAllocateInfo.allocationSize = memoryRequirements.size;
-	memoryAllocateInfo.memoryTypeIndex = this->FindMemoryType(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-	result &= vkAllocateMemory(this->mLogicalDevice, &memoryAllocateInfo, nullptr, &this->mVertexBufferMemory) == VK_SUCCESS;
-	
-	if(result)
+	if (this->CreateBuffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, this->mVertexBuffer, this->mVertexBufferMemory))
 		vkBindBufferMemory(this->mLogicalDevice, this->mVertexBuffer, this->mVertexBufferMemory, 0);
+	else
+		return false;
 
 	//
 	//Copy data
 	//
 
 	void* data;
-	vkMapMemory(this->mLogicalDevice, this->mVertexBufferMemory, 0, bufferCreateInfo.size, 0, &data);
+	vkMapMemory(this->mLogicalDevice, this->mVertexBufferMemory, 0, bufferSize, 0, &data);
 	
-	memcpy(data, this->mTriangleVertices.data(), bufferCreateInfo.size);
+	memcpy(data, this->mTriangleVertices.data(), bufferSize);
 
+	vkUnmapMemory(this->mLogicalDevice, this->mVertexBufferMemory); 
 
-	vkUnmapMemory(this->mLogicalDevice, this->mVertexBufferMemory);
-
-	return result; 
+	return true;
 }
 
 
@@ -822,6 +799,33 @@ bool VKRenderer::CreateSyncObjects()
 
 	return true;
 }
+
+bool VKRenderer::CreateBuffer(VkDeviceSize p_size, VkBufferUsageFlags p_usage, VkMemoryPropertyFlags p_properties, VkBuffer& p_buffer, VkDeviceMemory& p_bufferMemory)
+{
+	VkBufferCreateInfo bufferCreateInfo{};
+
+	bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferCreateInfo.size = p_size;
+	bufferCreateInfo.usage = p_usage;
+	bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	bool result = vkCreateBuffer(this->mLogicalDevice, &bufferCreateInfo, nullptr, &p_buffer) == VK_SUCCESS;
+
+	VkMemoryRequirements memoryRequirements;
+
+	vkGetBufferMemoryRequirements(this->mLogicalDevice, this->mVertexBuffer, &memoryRequirements);
+
+	VkMemoryAllocateInfo memoryAllocateInfo{};
+
+	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	memoryAllocateInfo.allocationSize = memoryRequirements.size;
+	memoryAllocateInfo.memoryTypeIndex = this->FindMemoryType(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+	result &= vkAllocateMemory(this->mLogicalDevice, &memoryAllocateInfo, nullptr, &p_bufferMemory) == VK_SUCCESS;
+
+	return result;
+}
+
 
 //
 //IRenderer implementation

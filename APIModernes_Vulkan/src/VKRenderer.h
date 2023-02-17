@@ -90,6 +90,8 @@ private :
 
 	uint32_t FindMemoryType(const uint32_t& p_filterBits, VkMemoryPropertyFlags properties);
 
+	bool CreateBuffer(VkDeviceSize p_size, VkBufferUsageFlags p_usage, VkMemoryPropertyFlags p_properties, VkBuffer& p_buffer, VkDeviceMemory& p_bufferMemory);
+
 public:
 	VkShaderModule LoadShader(const std::vector<char>& p_byteCode); //TODO : put LoadShader() in a Ressource manager or smth
 
