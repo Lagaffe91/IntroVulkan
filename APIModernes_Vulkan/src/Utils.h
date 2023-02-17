@@ -29,6 +29,7 @@ struct Vertex
 {
 	Vector3 pos;
 	Vector3 color;
+	Vector2 textCoords;
 };
 
 //TODO : Add VKUtils namespace because why not kekew

@@ -14,10 +14,10 @@ class VKRenderer : public IRenderer
 private :
 	const std::vector<Vertex> vertices = 
 	{
-		{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-		{{0.5f, -0.5f} , {0.0f, 1.0f, 0.0f}},
-		{{0.5f, 0.5f}  , {0.0f, 0.0f, 1.0f}},
-		{{-0.5f, 0.5f} , {1.0f, 1.0f, 1.0f}}
+		{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+		{{0.5f, -0.5f} , {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+		{{0.5f, 0.5f}  , {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+		{{-0.5f, 0.5f} , {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
 	};
 
 	const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0	};
@@ -136,20 +136,24 @@ public:
 		return vertexInputBindingDescription;
 	}
 
-	static std::array<VkVertexInputAttributeDescription, 2> GetAttributeDescriptions() 
+	static std::array<VkVertexInputAttributeDescription, 3> GetAttributeDescriptions() 
 	{
-		std::array<VkVertexInputAttributeDescription, 2> vertexInputAttributeDescription{};
+		std::array<VkVertexInputAttributeDescription, 3> vertexInputAttributeDescription{};
 
 		vertexInputAttributeDescription[0].binding = 0;
 		vertexInputAttributeDescription[0].location = 0;
 		vertexInputAttributeDescription[0].format = VK_FORMAT_R32G32B32_SFLOAT;
 		vertexInputAttributeDescription[0].offset = offsetof(Vertex, Vertex::pos);
 
-
 		vertexInputAttributeDescription[1].binding = 0;
 		vertexInputAttributeDescription[1].location = 1;
 		vertexInputAttributeDescription[1].format = VK_FORMAT_R32G32B32_SFLOAT;
 		vertexInputAttributeDescription[1].offset = offsetof(Vertex, Vertex::color);
+
+		vertexInputAttributeDescription[2].binding = 0;
+		vertexInputAttributeDescription[2].location = 2;
+		vertexInputAttributeDescription[2].format = VK_FORMAT_R32G32_SFLOAT;
+		vertexInputAttributeDescription[2].offset = offsetof(Vertex, Vertex::textCoords);
 
 		return vertexInputAttributeDescription;
 	}
