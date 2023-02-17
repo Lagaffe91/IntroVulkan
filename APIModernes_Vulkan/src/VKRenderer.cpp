@@ -419,6 +419,82 @@ bool VKRenderer::CreateSwapChain()
 	}
 }
 
+bool VKRenderer::CreateDescriptorSetLayout()
+{
+	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
+
+	samplerLayoutBinding.binding = 1;
+	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	samplerLayoutBinding.descriptorCount = 1;
+	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	std::array<VkDescriptorSetLayoutBinding, 1> bindings = { samplerLayoutBinding };
+
+	VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo{};
+
+	descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	descriptorSetLayoutCreateInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+	descriptorSetLayoutCreateInfo.pBindings = bindings.data();
+
+	return vkCreateDescriptorSetLayout(this->mLogicalDevice, &descriptorSetLayoutCreateInfo, nullptr, &this->mDescriptorSetLayout) == VK_SUCCESS;
+}
+
+bool VKRenderer::CreateDescriptorPool()
+{
+	VkDescriptorPoolSize descriptorPoolSize{};
+
+	descriptorPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	descriptorPoolSize.descriptorCount = static_cast<uint32_t>(this->mGraphicsPipeline.MAX_CONCURENT_FRAMES);
+
+	VkDescriptorPoolCreateInfo descriptorPoolCreateInfo{};
+
+	descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	descriptorPoolCreateInfo.poolSizeCount = 1;
+	descriptorPoolCreateInfo.pPoolSizes = &descriptorPoolSize;
+	descriptorPoolCreateInfo.maxSets = static_cast<uint32_t>(this->mGraphicsPipeline.MAX_CONCURENT_FRAMES);
+
+	return vkCreateDescriptorPool(this->mLogicalDevice, &descriptorPoolCreateInfo, nullptr, &this->mDescriptorPool) == VK_SUCCESS;
+}
+
+bool VKRenderer::CreateDescriptorSets()
+{
+	std::vector<VkDescriptorSetLayout> layouts(this->mGraphicsPipeline.MAX_CONCURENT_FRAMES, this->mDescriptorSetLayout);
+
+	VkDescriptorSetAllocateInfo descriptorSetAllocateInfo{};
+
+	descriptorSetAllocateInfo.sType					= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	descriptorSetAllocateInfo.descriptorPool		= this->mDescriptorPool;
+	descriptorSetAllocateInfo.descriptorSetCount	= static_cast<uint32_t>(this->mGraphicsPipeline.MAX_CONCURENT_FRAMES);
+	descriptorSetAllocateInfo.pSetLayouts			= layouts.data();
+
+	this->mDescriptorSets.resize(this->mGraphicsPipeline.MAX_CONCURENT_FRAMES);
+
+	bool result = vkAllocateDescriptorSets(this->mLogicalDevice, &descriptorSetAllocateInfo, this->mDescriptorSets.data()) == VK_SUCCESS;
+
+	for (size_t i = 0; i < this->mGraphicsPipeline.MAX_CONCURENT_FRAMES; i++)
+	{
+		VkDescriptorImageInfo descriptorImageInfo{};
+
+		descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		descriptorImageInfo.imageView	= this->mTextureImageView;
+		descriptorImageInfo.sampler		= this->mTextureSampler;
+
+		VkWriteDescriptorSet writeDescriptorSet; //This will need to be an array when i'll do maths stuff
+
+		writeDescriptorSet.sType			= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		writeDescriptorSet.dstSet			= this->mDescriptorSets[i];
+		writeDescriptorSet.dstBinding		= 1;
+		writeDescriptorSet.dstArrayElement	= 0;
+		writeDescriptorSet.descriptorType	= VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		writeDescriptorSet.descriptorCount	= 1;
+		writeDescriptorSet.pImageInfo		= &descriptorImageInfo;
+
+		vkUpdateDescriptorSets(this->mLogicalDevice, 1, &writeDescriptorSet, 0, nullptr);
+	}
+
+	return result;
+}
+
 bool VKRenderer::SetupGraphicsPipeline()
 {
 	//
@@ -531,6 +607,8 @@ bool VKRenderer::SetupGraphicsPipeline()
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.setLayoutCount = 1;
+	pipelineLayoutInfo.pSetLayouts = &this->mDescriptorSetLayout;
 
 	if (vkCreatePipelineLayout(this->mLogicalDevice, &pipelineLayoutInfo, nullptr, &this->mGraphicsPipeline.vkPipelineLayout) != VK_SUCCESS)
 		return false;
@@ -993,6 +1071,8 @@ void VKRenderer::RecordCommandBuffer(VkCommandBuffer& p_commandBuffer, uint32_t 
 
 	vkCmdBindPipeline(p_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->mGraphicsPipeline.vkPipeline);
 
+	vkCmdBindDescriptorSets(p_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->mGraphicsPipeline.vkPipelineLayout, 0, 1, &this->mDescriptorSets[this->mCurrentFrame], 0, nullptr);
+
 	VkBuffer vertexBuffers[] = { this->mVertexBuffer };
 	VkDeviceSize offsets[] = { 0 };
 	vkCmdBindVertexBuffers(p_commandBuffer, 0, 1, vertexBuffers, offsets);
@@ -1153,6 +1233,9 @@ bool VKRenderer::Init(Window* p_window)
 	result &= this->PickPhysicalDevice();
 	result &= this->CreateLogicalDevice();
 	result &= this->CreateSwapChain();
+	result &= this->CreateDescriptorSetLayout();
+	result &= this->CreateDescriptorPool();
+	result &= this->CreateDescriptorSets();
 	result &= this->SetupGraphicsPipeline();
 	result &= this->CreateFrameBuffers();
 	result &= this->CreateCommandBuffer();
@@ -1200,8 +1283,13 @@ void VKRenderer::Release()
 	for (VkFramebuffer frameBuffer : this->mSwapChain.frameBuffers)
 		vkDestroyFramebuffer(this->mLogicalDevice, frameBuffer, nullptr);
 
+	//Descriptors
+	vkDestroyDescriptorPool(this->mLogicalDevice, this->mDescriptorPool, nullptr);
+	vkDestroyDescriptorSetLayout(this->mLogicalDevice, this->mDescriptorSetLayout, nullptr);
+
 	//Pipeline
 	vkDestroyPipeline(this->mLogicalDevice, this->mGraphicsPipeline.vkPipeline, nullptr);
+	vkDestroyDescriptorSetLayout(this->mLogicalDevice, this->mDescriptorSetLayout, nullptr);
 	vkDestroyPipelineLayout(this->mLogicalDevice, this->mGraphicsPipeline.vkPipelineLayout, nullptr);
 	vkDestroyRenderPass(this->mLogicalDevice, this->mGraphicsPipeline.vkRenderPass, nullptr);
 

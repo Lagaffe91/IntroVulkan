@@ -40,6 +40,12 @@ private :
 	VkShaderModule mVertexShader;
 	VkShaderModule mFragmentShader;
 	
+	//-------
+	std::vector<VkDescriptorSet>	mDescriptorSets;
+	VkDescriptorSetLayout			mDescriptorSetLayout;
+	VkDescriptorPool				mDescriptorPool;
+	//-------
+
 	//------
 	VkCommandPool	mCommandPool;
 	std::vector<VkCommandBuffer> mCommandBuffer;
@@ -50,7 +56,6 @@ private :
 	std::vector<VkSemaphore>	mImageAviableSemaphore;
 	std::vector<VkFence>		mPresentFence;
 	//------
-
 
 	//------ TODO : this would fit in a Model class
 	VkBuffer		mVertexBuffer;
@@ -87,6 +92,12 @@ private :
 
 	//TODO : VKRenderer::CreateLogicalDevice : presentMode is hardcoded to FIFO (i dont want anything else, but could be cool to make it parametrable)
 	bool CreateSwapChain();
+
+	bool CreateDescriptorSetLayout();
+
+	bool CreateDescriptorPool();
+
+	bool CreateDescriptorSets();
 
 	bool SetupGraphicsPipeline();
 
