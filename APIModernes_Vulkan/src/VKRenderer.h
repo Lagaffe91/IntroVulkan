@@ -12,16 +12,15 @@
 class VKRenderer : public IRenderer
 {
 private :
-	const std::vector<Vertex> vertices = {
+	const std::vector<Vertex> vertices = 
+	{
 		{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-		{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-		{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-		{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+		{{0.5f, -0.5f} , {0.0f, 1.0f, 0.0f}},
+		{{0.5f, 0.5f}  , {0.0f, 0.0f, 1.0f}},
+		{{-0.5f, 0.5f} , {1.0f, 1.0f, 1.0f}}
 	};
 
-	const std::vector<uint16_t> indices = {
-	0, 1, 2, 2, 3, 0
-	};
+	const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0	};
 
 	//Would like this to be parametrable ?
 	const std::vector<const char*> mValidationLayers = { "VK_LAYER_KHRONOS_validation" };
@@ -52,8 +51,13 @@ private :
 	std::vector<VkFence>		mPresentFence;
 	//------
 
+
+	//------ TODO : this would fit in a Model class
 	VkBuffer mVertexBuffer;
 	VkDeviceMemory mVertexBufferMemory;
+	VkBuffer mIndexBuffer;
+	VkDeviceMemory mIndexBufferMemory;
+	//
 
 
 	uint32_t mCurrentFrame = 0;
@@ -88,6 +92,8 @@ private :
 	bool CreateCommandBuffer();
 
 	bool CreateVertexBuffer();
+
+	bool CreateIndexBuffer();
 
 	void RecordCommandBuffer(VkCommandBuffer& commandBuffer, uint32_t imageIndex);
 

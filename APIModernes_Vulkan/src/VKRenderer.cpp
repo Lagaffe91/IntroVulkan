@@ -792,14 +792,15 @@ void VKRenderer::RecordCommandBuffer(VkCommandBuffer& p_commandBuffer, uint32_t 
 
 	vkCmdSetScissor(p_commandBuffer, 0, 1, &scissor);
 
-
 	vkCmdBindPipeline(p_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->mGraphicsPipeline.vkPipeline);
 
 	VkBuffer vertexBuffers[] = { this->mVertexBuffer };
 	VkDeviceSize offsets[] = { 0 };
 	vkCmdBindVertexBuffers(p_commandBuffer, 0, 1, vertexBuffers, offsets);
 
-	vkCmdDraw(p_commandBuffer, static_cast<uint32_t>(this->vertices.size()), 1, 0, 0);
+	vkCmdBindIndexBuffer(p_commandBuffer, this->mIndexBuffer, 0, VK_INDEX_TYPE_UINT16);
+
+	vkCmdDrawIndexed(p_commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
 	vkCmdEndRenderPass(p_commandBuffer);
 	vkEndCommandBuffer(p_commandBuffer);
@@ -876,6 +877,30 @@ bool VKRenderer::CreateBuffer(VkDeviceSize p_size, VkBufferUsageFlags p_usage, V
 	return result;
 }
 
+bool VKRenderer::CreateIndexBuffer()
+{
+	VkDeviceSize bufferSize = sizeof(this->indices[0]) * this->indices.size();
+
+	VkBuffer stagingBuffer;
+	VkDeviceMemory stagingBufferMemory;
+
+	bool result = this->CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory) == VK_SUCCESS;
+
+	void* data;
+	vkMapMemory(this->mLogicalDevice , stagingBufferMemory, 0, bufferSize, 0, &data);
+	memcpy(data, this->indices.data(), (size_t)bufferSize);
+	vkUnmapMemory(this->mLogicalDevice, stagingBufferMemory);
+
+	result &= this->CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, this->mIndexBuffer, this->mIndexBufferMemory) == VK_SUCCESS;
+
+	this->CopyBuffer(stagingBuffer, this->mIndexBuffer, bufferSize);
+
+	vkDestroyBuffer(this->mLogicalDevice, stagingBuffer, nullptr);
+	vkFreeMemory(this->mLogicalDevice, stagingBufferMemory, nullptr);
+
+	return result;
+}
+
 
 //
 //IRenderer implementation
@@ -897,6 +922,7 @@ bool VKRenderer::Init(Window* p_window)
 	result &= this->CreateCommandBuffer();
 	result &= this->CreateVertexBuffer();
 	result &= this->CreateSyncObjects();
+	result &= this->CreateIndexBuffer();
 
 	return result;
 }
@@ -916,6 +942,10 @@ void VKRenderer::Release()
 	//Vertex Buffer
 	vkDestroyBuffer(this->mLogicalDevice, this->mVertexBuffer, nullptr);
 	vkFreeMemory(this->mLogicalDevice, this->mVertexBufferMemory, nullptr);
+
+	//Index Buffer
+	vkDestroyBuffer(this->mLogicalDevice, this->mIndexBuffer, nullptr);
+	vkFreeMemory(this->mLogicalDevice, this->mIndexBufferMemory, nullptr);
 
 	//Command buffer
 	vkFreeCommandBuffers(this->mLogicalDevice, this->mCommandPool, this->mGraphicsPipeline.MAX_CONCURENT_FRAMES, this->mCommandBuffer.data());
