@@ -1457,7 +1457,7 @@ void VKRenderer::UpdateUniformBuffer()
 
 	ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.proj = glm::perspective(glm::radians(45.0f), this->mSwapChain.extent.width / (float)this->mSwapChain.extent.height, 0.1f, 10.0f);
+	ubo.proj = glm::perspective(glm::radians(45.0f), this->mSwapChain.extent.width / (float)this->mSwapChain.extent.height, 0.1f, 100.0f);
 	ubo.proj[1][1] *= -1;
 
 	memcpy(this->mUniformBuffersMap[this->mCurrentFrame], &ubo, sizeof(ubo));
