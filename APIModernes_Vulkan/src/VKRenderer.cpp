@@ -3,9 +3,12 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image/stb_image.h"
 
-#include "Utils.h"
+#include "glm/gtc/matrix_transform.hpp"
 
+#define GLFW_INCLUDE_VULKAN
 #include "GLFW/glfw3.h"
+
+#include "Utils.h"
 
 #include "VKRenderer.h"
 
@@ -18,12 +21,12 @@ bool VKRenderer::CreateVKInstance()
 
 	VkApplicationInfo applicationInfo{};
 
-	applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-	applicationInfo.pApplicationName = APP_NAME;
-	applicationInfo.applicationVersion = VK_MAKE_VERSION(APP_VERSION_MAJOR, APP_VERSION_MINOR, APP_VERSION_PATCH);
-	applicationInfo.pEngineName = ENGINE_NAME;
-	applicationInfo.engineVersion = VK_MAKE_VERSION(ENGINE_VERSION_MAJOR, ENGINE_VERSION_MINOR, ENGINE_VERSION_PATCH);
-	applicationInfo.apiVersion = VK_API_VERSION_1_3;
+	applicationInfo.sType				= VK_STRUCTURE_TYPE_APPLICATION_INFO;
+	applicationInfo.pApplicationName	= APP_NAME;
+	applicationInfo.applicationVersion	= VK_MAKE_VERSION(APP_VERSION_MAJOR, APP_VERSION_MINOR, APP_VERSION_PATCH);
+	applicationInfo.pEngineName			= ENGINE_NAME;
+	applicationInfo.engineVersion		= VK_MAKE_VERSION(ENGINE_VERSION_MAJOR, ENGINE_VERSION_MINOR, ENGINE_VERSION_PATCH);
+	applicationInfo.apiVersion			= VK_API_VERSION_1_3;
 
 	//
 	// VkApplicationInfo initialisation
@@ -34,11 +37,11 @@ bool VKRenderer::CreateVKInstance()
 	uint32_t glfwExtentionCount = 0;
 	const char** glfwExtentionsChr = glfwGetRequiredInstanceExtensions(&glfwExtentionCount);
 
-	instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-	instanceCreateInfo.pApplicationInfo = &applicationInfo;
-	instanceCreateInfo.enabledExtensionCount = glfwExtentionCount;
-	instanceCreateInfo.ppEnabledExtensionNames = glfwExtentionsChr;
-	instanceCreateInfo.enabledLayerCount = 0;
+	instanceCreateInfo.sType					= VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+	instanceCreateInfo.pApplicationInfo			= &applicationInfo;
+	instanceCreateInfo.enabledExtensionCount	= glfwExtentionCount;
+	instanceCreateInfo.ppEnabledExtensionNames	= glfwExtentionsChr;
+	instanceCreateInfo.enabledLayerCount		= 0;
 
 	//
 	//Validation layers
@@ -421,6 +424,13 @@ bool VKRenderer::CreateSwapChain()
 
 bool VKRenderer::CreateDescriptorSetLayout()
 {
+	VkDescriptorSetLayoutBinding uboLayoutBinding{};
+
+	uboLayoutBinding.binding = 0;
+	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	uboLayoutBinding.descriptorCount = 1;
+	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
 	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
 
 	samplerLayoutBinding.binding = 1;
@@ -428,7 +438,7 @@ bool VKRenderer::CreateDescriptorSetLayout()
 	samplerLayoutBinding.descriptorCount = 1;
 	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	std::array<VkDescriptorSetLayoutBinding, 1> bindings = { samplerLayoutBinding };
+	std::array<VkDescriptorSetLayoutBinding, 2> bindings = { uboLayoutBinding, samplerLayoutBinding };
 
 	VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo{};
 
@@ -439,19 +449,42 @@ bool VKRenderer::CreateDescriptorSetLayout()
 	return vkCreateDescriptorSetLayout(this->mLogicalDevice, &descriptorSetLayoutCreateInfo, nullptr, &this->mDescriptorSetLayout) == VK_SUCCESS;
 }
 
+bool VKRenderer::CreateUniformBuffers()
+{
+	VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+
+	mUniformBuffers.resize(this->mGraphicsPipeline.MAX_CONCURENT_FRAMES);
+	mUniformBuffersMemory.resize(this->mGraphicsPipeline.MAX_CONCURENT_FRAMES);
+	mUniformBuffersMap.resize(this->mGraphicsPipeline.MAX_CONCURENT_FRAMES);
+	
+	bool result = true;
+
+	for (size_t i = 0; i < this->mGraphicsPipeline.MAX_CONCURENT_FRAMES; i++)
+	{
+		result &= this->CreateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, this->mUniformBuffers[i], this->mUniformBuffersMemory[i]);
+
+		vkMapMemory(this->mLogicalDevice, this->mUniformBuffersMemory[i], 0, bufferSize, 0, &this->mUniformBuffersMap[i]);
+	}
+	return result;
+}
+
 bool VKRenderer::CreateDescriptorPool()
 {
-	VkDescriptorPoolSize descriptorPoolSize{};
+	std::array<VkDescriptorPoolSize, 2> descriptorPoolSize{};
 
-	descriptorPoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	descriptorPoolSize.descriptorCount = static_cast<uint32_t>(this->mGraphicsPipeline.MAX_CONCURENT_FRAMES);
+	descriptorPoolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	descriptorPoolSize[0].descriptorCount = (uint32_t)(this->mGraphicsPipeline.MAX_CONCURENT_FRAMES);
+
+	descriptorPoolSize[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	descriptorPoolSize[1].descriptorCount = (uint32_t)(this->mGraphicsPipeline.MAX_CONCURENT_FRAMES);
+
 
 	VkDescriptorPoolCreateInfo descriptorPoolCreateInfo{};
 
-	descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	descriptorPoolCreateInfo.poolSizeCount = 1;
-	descriptorPoolCreateInfo.pPoolSizes = &descriptorPoolSize;
-	descriptorPoolCreateInfo.maxSets = static_cast<uint32_t>(this->mGraphicsPipeline.MAX_CONCURENT_FRAMES);
+	descriptorPoolCreateInfo.sType			= VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	descriptorPoolCreateInfo.poolSizeCount	= descriptorPoolSize.size();
+	descriptorPoolCreateInfo.pPoolSizes		= descriptorPoolSize.data();
+	descriptorPoolCreateInfo.maxSets		= (uint32_t)(this->mGraphicsPipeline.MAX_CONCURENT_FRAMES);
 
 	return vkCreateDescriptorPool(this->mLogicalDevice, &descriptorPoolCreateInfo, nullptr, &this->mDescriptorPool) == VK_SUCCESS;
 }
@@ -464,7 +497,7 @@ bool VKRenderer::CreateDescriptorSets()
 
 	descriptorSetAllocateInfo.sType					= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	descriptorSetAllocateInfo.descriptorPool		= this->mDescriptorPool;
-	descriptorSetAllocateInfo.descriptorSetCount	= static_cast<uint32_t>(this->mGraphicsPipeline.MAX_CONCURENT_FRAMES);
+	descriptorSetAllocateInfo.descriptorSetCount	= (uint32_t)(this->mGraphicsPipeline.MAX_CONCURENT_FRAMES);
 	descriptorSetAllocateInfo.pSetLayouts			= layouts.data();
 
 	this->mDescriptorSets.resize(this->mGraphicsPipeline.MAX_CONCURENT_FRAMES);
@@ -473,23 +506,50 @@ bool VKRenderer::CreateDescriptorSets()
 
 	for (size_t i = 0; i < this->mGraphicsPipeline.MAX_CONCURENT_FRAMES; i++)
 	{
+		VkDescriptorBufferInfo descriptorBufferInfo{};
+
+		descriptorBufferInfo.buffer = this->mUniformBuffers[i];
+		descriptorBufferInfo.offset = 0;
+		descriptorBufferInfo.range = sizeof(UniformBufferObject);
+
 		VkDescriptorImageInfo descriptorImageInfo{};
 
 		descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		descriptorImageInfo.imageView	= this->mTextureImageView;
 		descriptorImageInfo.sampler		= this->mTextureSampler;
 
-		std::array<VkWriteDescriptorSet, 1>  writeDescriptorSet; //This will need to be an array when i'll do maths stuff
+		std::array<VkWriteDescriptorSet, 2>  writeDescriptorSet; //This will need to be an array when i'll do maths stuff
 
 		writeDescriptorSet[0].sType				= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		writeDescriptorSet[0].dstSet			= this->mDescriptorSets[i];
-		writeDescriptorSet[0].dstBinding		= 1;
+		writeDescriptorSet[0].dstBinding		= 0;
 		writeDescriptorSet[0].dstArrayElement	= 0;
-		writeDescriptorSet[0].descriptorType	= VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		writeDescriptorSet[0].descriptorType	= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		writeDescriptorSet[0].descriptorCount	= 1;
-		writeDescriptorSet[0].pImageInfo		= &descriptorImageInfo;
+		writeDescriptorSet[0].pBufferInfo		= &descriptorBufferInfo;
+		writeDescriptorSet[0].pImageInfo		= nullptr;
+		writeDescriptorSet[0].pTexelBufferView	= nullptr;
+
+		writeDescriptorSet[1].sType				= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		writeDescriptorSet[1].dstSet			= this->mDescriptorSets[i];
+		writeDescriptorSet[1].dstBinding		= 1;
+		writeDescriptorSet[1].dstArrayElement	= 0;
+		writeDescriptorSet[1].descriptorType	= VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		writeDescriptorSet[1].descriptorCount	= 1;
+		writeDescriptorSet[1].pImageInfo		= &descriptorImageInfo;
 
 		vkUpdateDescriptorSets(this->mLogicalDevice, writeDescriptorSet.size(), writeDescriptorSet.data(), 0, nullptr);
+		
+		/*
+		HEY ! 
+
+		If you run the program in debug mode (a.k.a validation layers on) the program will crash at this command ! 
+		It look like it's not my fault, as highlighted in this github issue :
+			https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers/issues/593
+		Put the program on release config, and it will work as intended
+
+		Have fun !
+		*/
  	}
 
 	return result;
@@ -545,7 +605,7 @@ bool VKRenderer::SetupGraphicsPipeline()
 	pipelineRasterizationStateCreateInfo.polygonMode				= VK_POLYGON_MODE_FILL;
 	pipelineRasterizationStateCreateInfo.lineWidth					= 1.0f;
 	pipelineRasterizationStateCreateInfo.cullMode					= VK_CULL_MODE_BACK_BIT;
-	pipelineRasterizationStateCreateInfo.frontFace					= VK_FRONT_FACE_CLOCKWISE;
+	pipelineRasterizationStateCreateInfo.frontFace					= VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	pipelineRasterizationStateCreateInfo.depthBiasEnable			= VK_FALSE;
 
 
@@ -1238,6 +1298,7 @@ bool VKRenderer::Init(Window* p_window)
 	result &= this->CreateTextureImageView();
 	result &= this->CreateTextureSampler();
 	result &= this->CreateDescriptorSetLayout();
+	result &= this->CreateUniformBuffers();
 	result &= this->CreateDescriptorPool();
 	result &= this->CreateDescriptorSets();
 	result &= this->CreateFrameBuffers();
@@ -1285,6 +1346,11 @@ void VKRenderer::Release()
 
 	//Descriptors
 	vkDestroyDescriptorPool(this->mLogicalDevice, this->mDescriptorPool, nullptr);
+	for (size_t i = 0; i < this->mGraphicsPipeline.MAX_CONCURENT_FRAMES; i++)
+	{
+		vkDestroyBuffer(this->mLogicalDevice, this->mUniformBuffers[i], nullptr);
+		vkFreeMemory(this->mLogicalDevice, this->mUniformBuffersMemory[i], nullptr);
+	}
 	vkDestroyDescriptorSetLayout(this->mLogicalDevice, this->mDescriptorSetLayout, nullptr);
 
 	//Pipeline
@@ -1314,6 +1380,18 @@ void VKRenderer::Release()
 	vkDestroyInstance(this->mVKInstance, nullptr);
 }
 
+void VKRenderer::UpdateUniformBuffer()
+{
+	UniformBufferObject ubo{};
+
+	ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	ubo.proj = glm::perspective(glm::radians(45.0f), this->mSwapChain.extent.width / (float)this->mSwapChain.extent.height, 0.1f, 10.0f);
+	ubo.proj[1][1] *= -1;
+
+	memcpy(this->mUniformBuffersMap[this->mCurrentFrame], &ubo, sizeof(ubo));
+}
+
 void VKRenderer::Render()
 {
 	//
@@ -1327,7 +1405,13 @@ void VKRenderer::Render()
 	vkAcquireNextImageKHR(this->mLogicalDevice, this->mSwapChain.vkSwapChain, UINT64_MAX, this->mImageAviableSemaphore[this->mCurrentFrame], VK_NULL_HANDLE, &imageIndex);
 
 	vkResetCommandBuffer(this->mCommandBuffer[this->mCurrentFrame], 0);
-	
+
+	//
+	//Update objects data (idealy in engine class)
+	//
+
+	UpdateUniformBuffer();
+
 	//
 	//Command Buffer
 	//

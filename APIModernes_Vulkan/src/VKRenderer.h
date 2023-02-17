@@ -44,6 +44,10 @@ private :
 	std::vector<VkDescriptorSet>	mDescriptorSets;
 	VkDescriptorSetLayout			mDescriptorSetLayout;
 	VkDescriptorPool				mDescriptorPool;
+
+	std::vector<VkBuffer>		mUniformBuffers;
+	std::vector<VkDeviceMemory> mUniformBuffersMemory;
+	std::vector<void*>			mUniformBuffersMap;
 	//-------
 
 	//------
@@ -95,6 +99,8 @@ private :
 
 	bool CreateDescriptorSetLayout();
 
+	bool CreateUniformBuffers();
+
 	bool CreateDescriptorPool();
 
 	bool CreateDescriptorSets();
@@ -132,6 +138,8 @@ private :
 
 	VkCommandBuffer BeginSingleTimeCommands();
 	void EndSingleTimeCommands(VkCommandBuffer p_commandBuffer);
+
+	void UpdateUniformBuffer();
 
 public:
 	VkShaderModule LoadShader(const std::vector<char>& p_byteCode); //TODO : put LoadShader() in a Ressource manager or smth
